@@ -1,0 +1,182 @@
+﻿[
+  {
+    "ticket_id": "TKT-1001",
+    "status": "open",
+    "priority": "high",
+    "owner": "Alice",
+    "last_update": "2026-03-18",
+    "summary": "员工在更换密码后 10 分钟内仍无法登录 VPN，提示凭证无效。",
+    "category": "vpn"
+  },
+  {
+    "ticket_id": "TKT-1002",
+    "status": "in_progress",
+    "priority": "medium",
+    "owner": "Brian",
+    "last_update": "2026-03-17",
+    "summary": "用户忘记统一身份账号密码，无法通过自助入口完成重置。",
+    "category": "password"
+  },
+  {
+    "ticket_id": "TKT-1003",
+    "status": "waiting_for_customer",
+    "priority": "medium",
+    "owner": "Cathy",
+    "last_update": "2026-03-16",
+    "summary": "新注册用户未收到邮箱验证邮件，已请求提供垃圾邮件检查截图。",
+    "category": "account"
+  },
+  {
+    "ticket_id": "TKT-1004",
+    "status": "resolved",
+    "priority": "low",
+    "owner": "Daniel",
+    "last_update": "2026-03-15",
+    "summary": "客户咨询按年套餐的自动续费日期和账单下载入口。",
+    "category": "billing"
+  },
+  {
+    "ticket_id": "TKT-1005",
+    "status": "escalated",
+    "priority": "high",
+    "owner": "Eva",
+    "last_update": "2026-03-18",
+    "summary": "客户反馈月付订阅疑似重复扣费，已收集金额和交易日期并升级。",
+    "category": "billing"
+  },
+  {
+    "ticket_id": "TKT-1006",
+    "status": "open",
+    "priority": "medium",
+    "owner": "Frank",
+    "last_update": "2026-03-14",
+    "summary": "工作区管理员申请为成员增加账单查看权限。",
+    "category": "permissions"
+  },
+  {
+    "ticket_id": "TKT-1007",
+    "status": "in_progress",
+    "priority": "high",
+    "owner": "Grace",
+    "last_update": "2026-03-18",
+    "summary": "高管账号在出差期间无法完成 VPN 双重验证登录。",
+    "category": "vpn"
+  },
+  {
+    "ticket_id": "TKT-1008",
+    "status": "waiting_for_customer",
+    "priority": "low",
+    "owner": "Henry",
+    "last_update": "2026-03-13",
+    "summary": "用户申请补开发票，等待提供订单编号和开票抬头。",
+    "category": "invoice"
+  },
+  {
+    "ticket_id": "TKT-1009",
+    "status": "resolved",
+    "priority": "medium",
+    "owner": "Ivy",
+    "last_update": "2026-03-12",
+    "summary": "成员邀请链接失效，撤回后重新发送新邀请已成功加入。",
+    "category": "account"
+  },
+  {
+    "ticket_id": "TKT-1010",
+    "status": "escalated",
+    "priority": "urgent",
+    "owner": "Jason",
+    "last_update": "2026-03-19",
+    "summary": "多个用户同时报告核心系统无法通过 VPN 访问，已按高优先级升级。",
+    "category": "vpn"
+  },
+  {
+    "ticket_id": "TKT-1011",
+    "status": "open",
+    "priority": "medium",
+    "owner": "Kelly",
+    "last_update": "2026-03-11",
+    "summary": "用户请求将只读角色提升为成员管理角色，待核实审批链。",
+    "category": "permissions"
+  },
+  {
+    "ticket_id": "TKT-1012",
+    "status": "in_progress",
+    "priority": "high",
+    "owner": "Leo",
+    "last_update": "2026-03-17",
+    "summary": "同一账号 24 小时内第二次请求密码重置，正在做可疑事件核查。",
+    "category": "password"
+  },
+  {
+    "ticket_id": "TKT-1013",
+    "status": "resolved",
+    "priority": "low",
+    "owner": "Megan",
+    "last_update": "2026-03-10",
+    "summary": "客户询问超额用量如何计费，已根据当前套餐给出说明。",
+    "category": "billing"
+  },
+  {
+    "ticket_id": "TKT-1014",
+    "status": "waiting_for_customer",
+    "priority": "medium",
+    "owner": "Noah",
+    "last_update": "2026-03-16",
+    "summary": "邀请成员时系统提示席位不足，等待管理员确认是否增购席位。",
+    "category": "account"
+  },
+  {
+    "ticket_id": "TKT-1015",
+    "status": "escalated",
+    "priority": "high",
+    "owner": "Olivia",
+    "last_update": "2026-03-18",
+    "summary": "年付订阅客户申请退款，已超过 14 天窗口，升级计费运营判定。",
+    "category": "billing"
+  },
+  {
+    "ticket_id": "TKT-1016",
+    "status": "open",
+    "priority": "low",
+    "owner": "Peter",
+    "last_update": "2026-03-09",
+    "summary": "客户查询电子发票通常多久发送到登记邮箱。",
+    "category": "invoice"
+  },
+  {
+    "ticket_id": "TKT-1017",
+    "status": "in_progress",
+    "priority": "medium",
+    "owner": "Quinn",
+    "last_update": "2026-03-15",
+    "summary": "用户点击邮箱验证链接后提示令牌不匹配，正在复现浏览器环境。",
+    "category": "account"
+  },
+  {
+    "ticket_id": "TKT-1018",
+    "status": "resolved",
+    "priority": "medium",
+    "owner": "Rachel",
+    "last_update": "2026-03-14",
+    "summary": "设备未注册导致 VPN 登录失败，完成设备管理门户注册后已恢复。",
+    "category": "vpn"
+  },
+  {
+    "ticket_id": "TKT-1019",
+    "status": "open",
+    "priority": "high",
+    "owner": "Samuel",
+    "last_update": "2026-03-19",
+    "summary": "财务用户申请导出账单明细权限，需进一步确认业务必要性。",
+    "category": "permissions"
+  },
+  {
+    "ticket_id": "TKT-1020",
+    "status": "waiting_for_customer",
+    "priority": "medium",
+    "owner": "Tina",
+    "last_update": "2026-03-17",
+    "summary": "用户要求更正发票抬头，等待补充税号和原发票信息。",
+    "category": "invoice"
+  }
+]

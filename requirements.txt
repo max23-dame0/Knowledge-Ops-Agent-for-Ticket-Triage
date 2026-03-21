@@ -1,0 +1,7 @@
+openai-agents
+streamlit
+pydantic
+pandas
+faiss-cpu
+python-dotenv
+sentence-transformers
