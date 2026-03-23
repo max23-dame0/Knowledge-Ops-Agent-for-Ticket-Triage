@@ -1,12 +1,24 @@
-﻿"""Minimal smoke test runners for retrieval and real LLM agent execution."""
+﻿"""Minimal smoke tests and offline evaluation runners for knowledge-ops-agent."""
 
 from __future__ import annotations
 
 import argparse
+import csv
 import sys
+from collections import Counter
+from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from src.agents.main_agent import build_main_agent, run_agent
+from src.evals.metrics import (
+    clarification_accuracy,
+    extract_tool_names,
+    grounding_presence,
+    refusal_accuracy,
+    route_accuracy,
+    tool_use_accuracy,
+)
 from src.rag.build_index import build_kb_index
 from src.rag.chunking import chunk_kb_documents
 from src.tools.kb_search import search_kb
@@ -14,6 +26,8 @@ from src.utils.config import get_openai_settings
 
 
 DEFAULT_QUERY = "VPN 登录失败提示 token 过期怎么办"
+DEFAULT_EVAL_PATH = "data/eval_set.csv"
+DEFAULT_EVAL_OUTPUT_DIR = "data/eval_results"
 
 
 
@@ -129,33 +143,237 @@ def run_llm_smoke_test(
 
 
 
+def load_eval_rows(eval_path: str) -> list[dict[str, str]]:
+    """Load the offline evaluation CSV into a list of rows."""
+    path = Path(eval_path)
+    with path.open("r", encoding="utf-8-sig", newline="") as file:
+        return list(csv.DictReader(file))
+
+
+
+def _to_bool(value: str | None) -> bool:
+    """Convert CSV boolean-like strings into Python booleans."""
+    return (value or "").strip().lower() == "true"
+
+
+
+def _safe_pct(passed: int, total: int) -> float:
+    """Return a percentage ratio rounded to 3 decimals."""
+    if total == 0:
+        return 0.0
+    return round(passed / total, 3)
+
+
+
+def _build_result_path(output_dir: str) -> Path:
+    """Create a timestamped output path for offline evaluation records."""
+    path = Path(output_dir)
+    path.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    return path / f"offline_eval_results_{timestamp}.csv"
+
+
+
+def _write_eval_results(output_path: Path, records: list[dict[str, Any]]) -> None:
+    """Write per-sample offline evaluation records to a CSV file."""
+    fieldnames = [
+        "id",
+        "question",
+        "expected_route",
+        "predicted_route",
+        "should_clarify",
+        "predicted_clarify",
+        "expected_tool",
+        "predicted_tool",
+        "unsafe",
+        "refused",
+        "evidence_present",
+        "pass_fail_summary",
+        "error",
+    ]
+    with output_path.open("w", encoding="utf-8-sig", newline="") as file:
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        writer.writeheader()
+        for record in records:
+            writer.writerow(record)
+
+
+
+def run_offline_eval(
+    eval_path: str = DEFAULT_EVAL_PATH,
+    output_dir: str = DEFAULT_EVAL_OUTPUT_DIR,
+) -> int:
+    """Run a minimal offline evaluation loop over the CSV dataset."""
+    try:
+        rows = load_eval_rows(eval_path)
+    except Exception as exc:
+        print(f"[FAIL] Could not load eval set: {exc}")
+        return 1
+
+    if not rows:
+        print(f"[FAIL] Eval set is empty: {eval_path}")
+        return 1
+
+    route_counts = Counter(row.get("expected_route", "unknown") for row in rows)
+    metric_totals = {
+        "route_accuracy": 0,
+        "tool_use_accuracy": 0,
+        "clarification_accuracy": 0,
+        "grounding_presence": 0,
+        "refusal_accuracy": 0,
+    }
+    failure_count = 0
+    failed_samples: list[dict[str, str]] = []
+    per_sample_results: list[dict[str, Any]] = []
+
+    print(f"[INFO] Loaded eval set: samples={len(rows)} path={eval_path}")
+
+    for index, row in enumerate(rows, start=1):
+        sample_id = row.get("id", f"row-{index}")
+        question = row.get("question", "")
+        expected_route = row.get("expected_route", "")
+        should_clarify = _to_bool(row.get("should_clarify"))
+        should_use_tool = _to_bool(row.get("should_use_tool"))
+        expected_tool = row.get("expected_tool", "none")
+        unsafe = _to_bool(row.get("unsafe"))
+
+        try:
+            actual = run_agent(question).model_dump()
+        except Exception as exc:
+            failure_count += 1
+            failed_samples.append({"id": sample_id, "question": question, "error": str(exc)})
+            per_sample_results.append(
+                {
+                    "id": sample_id,
+                    "question": question,
+                    "expected_route": expected_route,
+                    "predicted_route": "error",
+                    "should_clarify": should_clarify,
+                    "predicted_clarify": False,
+                    "expected_tool": expected_tool,
+                    "predicted_tool": "error",
+                    "unsafe": unsafe,
+                    "refused": False,
+                    "evidence_present": False,
+                    "pass_fail_summary": "error",
+                    "error": str(exc),
+                }
+            )
+            print(f"[WARN] Sample failed: id={sample_id} error={exc}")
+            continue
+
+        predicted_tools = extract_tool_names(actual)
+        predicted_tool = predicted_tools[0] if predicted_tools else "none"
+        predicted_clarify = bool(actual.get("clarified", actual.get("needs_clarification", False)))
+        refused = bool(actual.get("refused", False))
+        evidence_present = grounding_presence(actual)
+
+        route_ok = route_accuracy(expected_route, actual)
+        tool_ok = tool_use_accuracy(expected_tool, should_use_tool, actual)
+        clarify_ok = clarification_accuracy(should_clarify, actual)
+        grounding_ok = evidence_present
+        refusal_ok = refusal_accuracy(unsafe, actual)
+
+        if route_ok:
+            metric_totals["route_accuracy"] += 1
+        if tool_ok:
+            metric_totals["tool_use_accuracy"] += 1
+        if clarify_ok:
+            metric_totals["clarification_accuracy"] += 1
+        if grounding_ok:
+            metric_totals["grounding_presence"] += 1
+        if refusal_ok:
+            metric_totals["refusal_accuracy"] += 1
+
+        pass_fail_summary = "pass" if all([route_ok, tool_ok, clarify_ok, refusal_ok]) else "fail"
+        per_sample_results.append(
+            {
+                "id": sample_id,
+                "question": question,
+                "expected_route": expected_route,
+                "predicted_route": actual.get("route", "unknown"),
+                "should_clarify": should_clarify,
+                "predicted_clarify": predicted_clarify,
+                "expected_tool": expected_tool,
+                "predicted_tool": predicted_tool,
+                "unsafe": unsafe,
+                "refused": refused,
+                "evidence_present": evidence_present,
+                "pass_fail_summary": pass_fail_summary,
+                "error": "",
+            }
+        )
+
+    successful_runs = len(rows) - failure_count
+    output_path = _build_result_path(output_dir)
+    _write_eval_results(output_path, per_sample_results)
+
+    print()
+    print("Offline Eval Summary")
+    print("--------------------")
+    print(f"Total samples        : {len(rows)}")
+    print(f"Successful runs      : {successful_runs}")
+    print(f"Failed samples       : {failure_count}")
+    print(f"Result file          : {output_path}")
+    print("Route distribution   :")
+    for route in ["kb", "ticket", "escalation", "clarify", "refuse"]:
+        print(f"  {route:<12} {route_counts.get(route, 0)}")
+    print("Metric results       :")
+    print(f"  route_accuracy         {_safe_pct(metric_totals['route_accuracy'], successful_runs):.3f}")
+    print(f"  tool_use_accuracy      {_safe_pct(metric_totals['tool_use_accuracy'], successful_runs):.3f}")
+    print(f"  clarification_accuracy {_safe_pct(metric_totals['clarification_accuracy'], successful_runs):.3f}")
+    print(f"  grounding_presence     {_safe_pct(metric_totals['grounding_presence'], successful_runs):.3f}")
+    print(f"  refusal_accuracy       {_safe_pct(metric_totals['refusal_accuracy'], successful_runs):.3f}")
+
+    if failed_samples:
+        print("Failed sample examples:")
+        for item in failed_samples[:5]:
+            print(f"  {item['id']}: {item['error']}")
+
+    print("[PASS] Offline evaluation finished")
+    return 0
+
+
+
 def _build_parser() -> argparse.ArgumentParser:
-    """Create a tiny CLI parser for smoke test execution."""
-    parser = argparse.ArgumentParser(description="Run retrieval or LLM smoke tests for knowledge-ops-agent.")
+    """Create a tiny CLI parser for smoke test and offline eval execution."""
+    parser = argparse.ArgumentParser(description="Run smoke tests or offline evals for knowledge-ops-agent.")
     parser.add_argument(
         "--mode",
-        choices=["kb", "llm"],
+        choices=["kb", "llm", "offline"],
         default="llm",
-        help="Smoke test mode: 'kb' for retrieval only, 'llm' for full real-agent validation.",
+        help="Run 'kb' smoke test, 'llm' smoke test, or 'offline' eval set execution.",
     )
     parser.add_argument(
         "--query",
         default=DEFAULT_QUERY,
-        help="Query used for retrieval and LLM validation.",
+        help="Query used for retrieval and LLM smoke validation.",
+    )
+    parser.add_argument(
+        "--eval-path",
+        default=DEFAULT_EVAL_PATH,
+        help="CSV file used for offline evaluation mode.",
+    )
+    parser.add_argument(
+        "--output-dir",
+        default=DEFAULT_EVAL_OUTPUT_DIR,
+        help="Directory used to save offline per-sample evaluation records.",
     )
     return parser
 
 
 
 def main() -> None:
-    """Run the selected smoke test and exit with a process status code."""
+    """Run the selected smoke test or offline eval and exit with a process status code."""
     parser = _build_parser()
     args = parser.parse_args()
 
     if args.mode == "kb":
         exit_code = run_kb_smoke_test(query=args.query)
-    else:
+    elif args.mode == "llm":
         exit_code = run_llm_smoke_test(query=args.query)
+    else:
+        exit_code = run_offline_eval(eval_path=args.eval_path, output_dir=args.output_dir)
 
     sys.exit(exit_code)
 
