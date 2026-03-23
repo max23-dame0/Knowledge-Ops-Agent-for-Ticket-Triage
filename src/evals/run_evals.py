@@ -1,10 +1,11 @@
-﻿"""Minimal smoke tests and offline evaluation runners for knowledge-ops-agent."""
+"""Minimal smoke tests and offline evaluation runners for knowledge-ops-agent."""
 
 from __future__ import annotations
 
 import argparse
 import csv
 import sys
+import time
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
@@ -14,6 +15,7 @@ from src.agents.main_agent import build_main_agent, run_agent
 from src.evals.metrics import (
     clarification_accuracy,
     extract_tool_names,
+    grounding_applicable,
     grounding_presence,
     refusal_accuracy,
     route_accuracy,
@@ -29,6 +31,31 @@ DEFAULT_QUERY = "VPN 登录失败提示 token 过期怎么办"
 DEFAULT_EVAL_PATH = "data/eval_set.csv"
 DEFAULT_EVAL_OUTPUT_DIR = "data/eval_results"
 
+
+
+def _is_rate_limit_error(exc: Exception) -> bool:
+    """Return True when an exception looks like a provider rate limit error."""
+    message = str(exc).lower()
+    return "429" in message or "rate_limit" in message or "rate limit" in message
+
+
+
+def _run_agent_with_retry(question: str, retries: int = 3, base_sleep_seconds: float = 2.0) -> dict[str, Any]:
+    """Run the agent with tiny retry/backoff for transient 429 errors."""
+    attempt = 0
+    while True:
+        try:
+            return run_agent(question).model_dump()
+        except Exception as exc:
+            attempt += 1
+            if attempt > retries or not _is_rate_limit_error(exc):
+                raise
+            sleep_seconds = base_sleep_seconds * attempt
+            print(
+                f"[WARN] Rate limit retry: attempt={attempt}/{retries} "
+                f"sleep={sleep_seconds:.1f}s question={question}"
+            )
+            time.sleep(sleep_seconds)
 
 
 def run_kb_smoke_test(
@@ -164,6 +191,11 @@ def _safe_pct(passed: int, total: int) -> float:
     return round(passed / total, 3)
 
 
+def _safe_percent(passed: int, total: int) -> float:
+    """Return a percentage in the 0-100 range rounded to 1 decimal."""
+    return round(_safe_pct(passed, total) * 100, 1)
+
+
 
 def _build_result_path(output_dir: str) -> Path:
     """Create a timestamped output path for offline evaluation records."""
@@ -187,7 +219,13 @@ def _write_eval_results(output_path: Path, records: list[dict[str, Any]]) -> Non
         "predicted_tool",
         "unsafe",
         "refused",
+        "evidence_expected",
         "evidence_present",
+        "route_ok",
+        "tool_ok",
+        "clarify_ok",
+        "grounding_ok",
+        "refusal_ok",
         "pass_fail_summary",
         "error",
     ]
@@ -222,6 +260,7 @@ def run_offline_eval(
         "grounding_presence": 0,
         "refusal_accuracy": 0,
     }
+    grounding_applicable_count = 0
     failure_count = 0
     failed_samples: list[dict[str, str]] = []
     per_sample_results: list[dict[str, Any]] = []
@@ -238,7 +277,7 @@ def run_offline_eval(
         unsafe = _to_bool(row.get("unsafe"))
 
         try:
-            actual = run_agent(question).model_dump()
+            actual = _run_agent_with_retry(question)
         except Exception as exc:
             failure_count += 1
             failed_samples.append({"id": sample_id, "question": question, "error": str(exc)})
@@ -254,7 +293,13 @@ def run_offline_eval(
                     "predicted_tool": "error",
                     "unsafe": unsafe,
                     "refused": False,
+                    "evidence_expected": False,
                     "evidence_present": False,
+                    "route_ok": False,
+                    "tool_ok": False,
+                    "clarify_ok": False,
+                    "grounding_ok": False,
+                    "refusal_ok": False,
                     "pass_fail_summary": "error",
                     "error": str(exc),
                 }
@@ -266,6 +311,7 @@ def run_offline_eval(
         predicted_tool = predicted_tools[0] if predicted_tools else "none"
         predicted_clarify = bool(actual.get("clarified", actual.get("needs_clarification", False)))
         refused = bool(actual.get("refused", False))
+        evidence_expected = grounding_applicable(actual)
         evidence_present = grounding_presence(actual)
 
         route_ok = route_accuracy(expected_route, actual)
@@ -274,13 +320,16 @@ def run_offline_eval(
         grounding_ok = evidence_present
         refusal_ok = refusal_accuracy(unsafe, actual)
 
+        if evidence_expected:
+            grounding_applicable_count += 1
+
         if route_ok:
             metric_totals["route_accuracy"] += 1
         if tool_ok:
             metric_totals["tool_use_accuracy"] += 1
         if clarify_ok:
             metric_totals["clarification_accuracy"] += 1
-        if grounding_ok:
+        if evidence_expected and grounding_ok:
             metric_totals["grounding_presence"] += 1
         if refusal_ok:
             metric_totals["refusal_accuracy"] += 1
@@ -298,11 +347,18 @@ def run_offline_eval(
                 "predicted_tool": predicted_tool,
                 "unsafe": unsafe,
                 "refused": refused,
+                "evidence_expected": evidence_expected,
                 "evidence_present": evidence_present,
+                "route_ok": route_ok,
+                "tool_ok": tool_ok,
+                "clarify_ok": clarify_ok,
+                "grounding_ok": grounding_ok,
+                "refusal_ok": refusal_ok,
                 "pass_fail_summary": pass_fail_summary,
                 "error": "",
             }
         )
+        time.sleep(1.0)
 
     successful_runs = len(rows) - failure_count
     output_path = _build_result_path(output_dir)
@@ -318,12 +374,39 @@ def run_offline_eval(
     print("Route distribution   :")
     for route in ["kb", "ticket", "escalation", "clarify", "refuse"]:
         print(f"  {route:<12} {route_counts.get(route, 0)}")
+    route_errors = successful_runs - metric_totals["route_accuracy"]
+    tool_errors = successful_runs - metric_totals["tool_use_accuracy"]
+    clarify_errors = successful_runs - metric_totals["clarification_accuracy"]
+    refusal_errors = successful_runs - metric_totals["refusal_accuracy"]
+    grounding_errors = grounding_applicable_count - metric_totals["grounding_presence"]
+
     print("Metric results       :")
-    print(f"  route_accuracy         {_safe_pct(metric_totals['route_accuracy'], successful_runs):.3f}")
-    print(f"  tool_use_accuracy      {_safe_pct(metric_totals['tool_use_accuracy'], successful_runs):.3f}")
-    print(f"  clarification_accuracy {_safe_pct(metric_totals['clarification_accuracy'], successful_runs):.3f}")
-    print(f"  grounding_presence     {_safe_pct(metric_totals['grounding_presence'], successful_runs):.3f}")
-    print(f"  refusal_accuracy       {_safe_pct(metric_totals['refusal_accuracy'], successful_runs):.3f}")
+    print(
+        f"  route_accuracy         {_safe_pct(metric_totals['route_accuracy'], successful_runs):.3f} "
+        f"({metric_totals['route_accuracy']}/{successful_runs}, {_safe_percent(metric_totals['route_accuracy'], successful_runs):.1f}%)"
+    )
+    print(
+        f"  tool_use_accuracy      {_safe_pct(metric_totals['tool_use_accuracy'], successful_runs):.3f} "
+        f"({metric_totals['tool_use_accuracy']}/{successful_runs}, {_safe_percent(metric_totals['tool_use_accuracy'], successful_runs):.1f}%)"
+    )
+    print(
+        f"  clarification_accuracy {_safe_pct(metric_totals['clarification_accuracy'], successful_runs):.3f} "
+        f"({metric_totals['clarification_accuracy']}/{successful_runs}, {_safe_percent(metric_totals['clarification_accuracy'], successful_runs):.1f}%)"
+    )
+    print(
+        f"  grounding_presence     {_safe_pct(metric_totals['grounding_presence'], grounding_applicable_count):.3f} "
+        f"({metric_totals['grounding_presence']}/{grounding_applicable_count}, {_safe_percent(metric_totals['grounding_presence'], grounding_applicable_count):.1f}%)"
+    )
+    print(
+        f"  refusal_accuracy       {_safe_pct(metric_totals['refusal_accuracy'], successful_runs):.3f} "
+        f"({metric_totals['refusal_accuracy']}/{successful_runs}, {_safe_percent(metric_totals['refusal_accuracy'], successful_runs):.1f}%)"
+    )
+    print("Error counts         :")
+    print(f"  route_errors          {route_errors}")
+    print(f"  tool_errors           {tool_errors}")
+    print(f"  clarification_errors  {clarify_errors}")
+    print(f"  grounding_errors      {grounding_errors}")
+    print(f"  refusal_errors        {refusal_errors}")
 
     if failed_samples:
         print("Failed sample examples:")

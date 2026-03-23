@@ -1,1 +1,61 @@
-"""Retrieval-focused agent module."""
+"""Lightweight retrieval wrapper for KB search and evidence normalization."""
+
+from __future__ import annotations
+
+from pydantic import BaseModel, Field
+
+from src.tools.kb_search import search_kb
+
+
+class RetrievalHit(BaseModel):
+    """A normalized retrieval hit returned by the retrieval layer."""
+
+    source_title: str = Field(description="Knowledge base source title.")
+    passage: str = Field(description="Retrieved passage text.")
+    score: float = Field(description="Relevance score from KB retrieval.")
+
+
+class RetrievalOutput(BaseModel):
+    """Structured retrieval output for main-agent and UI consumption."""
+
+    query: str = Field(description="Original retrieval query.")
+    results: list[RetrievalHit] = Field(description="Structured KB hits.")
+    normalized_evidence: list[str] = Field(description="Display-ready evidence lines derived from retrieval hits.")
+    source_titles: list[str] = Field(description="Unique KB source titles referenced by the hits.")
+
+
+class RetrievalAgent:
+    """Thin retrieval helper that wraps search_kb without owning routing decisions."""
+
+    def retrieve(self, query: str, top_k: int = 3) -> RetrievalOutput:
+        """Run KB search and normalize the output into stable evidence fields."""
+        raw = search_kb(query=query, top_k=top_k)
+        hits = [RetrievalHit(**item) for item in raw.get("results", [])]
+        source_titles: list[str] = []
+        normalized_evidence: list[str] = []
+
+        for hit in hits:
+            if hit.source_title not in source_titles:
+                source_titles.append(hit.source_title)
+            passage_summary = " ".join(hit.passage.split())[:180].strip()
+            if passage_summary:
+                normalized_evidence.append(
+                    f"KB source={hit.source_title} | score={hit.score:.3f} | passage={passage_summary}"
+                )
+            else:
+                normalized_evidence.append(
+                    f"KB source={hit.source_title} | score={hit.score:.3f}"
+                )
+
+        return RetrievalOutput(
+            query=query,
+            results=hits,
+            normalized_evidence=normalized_evidence,
+            source_titles=source_titles,
+        )
+
+
+
+def retrieve_evidence(query: str, top_k: int = 3) -> dict[str, object]:
+    """Convenience function for callers that want normalized retrieval output."""
+    return RetrievalAgent().retrieve(query=query, top_k=top_k).model_dump()

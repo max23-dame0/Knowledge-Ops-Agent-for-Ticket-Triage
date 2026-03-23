@@ -70,7 +70,8 @@ File: `src/agents/main_agent.py`
 Responsibilities:
 - register tools with the OpenAI Agents SDK
 - run the OpenAI-compatible model through chat completions
-- apply small local refusal / clarification checks before model execution
+- make the high-level route decision across `kb / ticket / escalation / clarify / refuse`
+- apply a small boundary-rules layer before model execution
 - normalize the final response into fields such as:
   - `route`
   - `answer`
@@ -86,6 +87,7 @@ Responsibilities:
 ### KB Retrieval
 
 Files:
+- `src/agents/retrieval_agent.py`
 - `src/rag/chunking.py`
 - `src/rag/build_index.py`
 - `src/rag/retrieve.py`
@@ -95,7 +97,9 @@ Flow:
 - markdown files under `data/kb_docs/` are chunked
 - chunks are embedded with `sentence-transformers`
 - vectors are indexed in local FAISS files
-- `search_kb(query)` retrieves top passages and returns structured results
+- `search_kb(query)` performs raw KB retrieval
+- `retrieval_agent` is a thin evidence-normalization layer on top of `search_kb`
+- the main agent still decides when KB retrieval is needed; `retrieval_agent` does not route ticket or escalation requests
 
 Local index artifacts:
 - `data/index/kb_index.faiss`
@@ -124,6 +128,20 @@ Flow:
   - `suggested_team`
   - `escalation_summary`
   - `recommended_next_step`
+
+### Boundary Rules / Precheck Layer
+
+Files:
+- `src/agents/main_agent.py`
+
+What this layer currently handles:
+- refuse obviously unsafe requests before tool use
+- clarify ticket questions that lack `ticket_id`
+- keep short but clearly actionable KB questions out of `clarify`
+- keep escalation policy questions in `kb`
+- keep concrete escalation cases out of premature clarification
+
+This is intentionally a lightweight rule layer, not a separate routing agent.
 
 ### Logging / Tracing
 
