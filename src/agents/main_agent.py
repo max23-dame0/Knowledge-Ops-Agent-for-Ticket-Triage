@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 from src.agents.retrieval_agent import retrieve_evidence
 from src.tools.escalation_tools import create_escalation_draft as base_create_escalation_draft
 from src.tools.ticket_tools import get_ticket_status as base_get_ticket_status
+from src.tools.ticket_tools import normalize_ticket_id
 from src.utils.config import get_openai_settings
 from src.utils.logging import get_logger
 
@@ -841,16 +842,18 @@ def _looks_like_escalation_query(user_input: str) -> bool:
 
 
 def _extract_ticket_id(user_input: str) -> str | None:
-    """Extract ticket id patterns like TKT-1004 or bare numeric ids from user input."""
-    explicit = re.search(r"\bTKT-\d+\b", user_input, flags=re.IGNORECASE)
-    if explicit:
-        return explicit.group(0).upper()
+    """Extract ticket ids from flexible user input variants.
 
-    numeric = re.search(r"\b(\d{3,6})\b", user_input)
-    if numeric and _looks_like_ticket_hint_only(user_input):
-        return numeric.group(1)
-    return None
-
+    This accepts canonical ids such as TKT-1004, compact ids like TKT1004,
+    spaced variants like TKT 1004, and bare numeric ids when the surrounding
+    text strongly suggests a ticket lookup.
+    """
+    normalized_input = user_input.strip()
+    allow_bare_numeric = bool(
+        _looks_like_ticket_hint_only(normalized_input)
+        or re.fullmatch(r"\d{3,6}", normalized_input)
+    )
+    return normalize_ticket_id(normalized_input, allow_bare_numeric=allow_bare_numeric)
 
 
 def _looks_like_ticket_hint_only(user_input: str) -> bool:
