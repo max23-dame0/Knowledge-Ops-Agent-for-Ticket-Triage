@@ -12,10 +12,18 @@ class EscalationDraft(BaseModel):
     suggested_team: str = Field(description="Suggested receiving team for the escalation.")
     escalation_summary: str = Field(description="A short summary suitable for an escalation draft.")
     recommended_next_step: str = Field(description="The next action the operator should take.")
+    needs_human_confirmation: bool = Field(
+        default=False,
+        description="True when the draft should not be acted on without human confirmation "
+        "(severity high or urgent).",
+    )
 
 
+# Severities that must not be auto-actioned without a human operator in the loop.
+_CONFIRMATION_SEVERITIES = ("high", "urgent")
 
-def create_escalation_draft(issue_summary: str, evidence: list[str]) -> dict[str, str]:
+
+def create_escalation_draft(issue_summary: str, evidence: list[str]) -> dict[str, object]:
     """Generate a simple escalation draft from an issue summary and supporting evidence."""
     normalized_summary = issue_summary.strip()
     evidence_text = " ".join(evidence).strip()
@@ -25,12 +33,14 @@ def create_escalation_draft(issue_summary: str, evidence: list[str]) -> dict[str
     suggested_team = _detect_team(combined_text)
     escalation_summary = _build_summary(normalized_summary, severity, suggested_team)
     recommended_next_step = _build_next_step(severity, suggested_team)
+    needs_human_confirmation = severity in _CONFIRMATION_SEVERITIES
 
     return EscalationDraft(
         severity=severity,
         suggested_team=suggested_team,
         escalation_summary=escalation_summary,
         recommended_next_step=recommended_next_step,
+        needs_human_confirmation=needs_human_confirmation,
     ).model_dump()
 
 

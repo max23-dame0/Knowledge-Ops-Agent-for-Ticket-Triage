@@ -13,6 +13,7 @@ from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
 
 from agents import Agent, ModelSettings, RunConfig, Runner, function_tool
+from src.agents.guardrails import looks_like_injection_attack
 from src.agents.retrieval_agent import retrieve_evidence
 from src.tools.escalation_tools import (
     create_escalation_draft as base_create_escalation_draft,
@@ -688,8 +689,10 @@ def _maybe_refuse(user_input: str) -> AgentAnswer | None:
         r"绕过.*限制",
         r"伪造.*工单状态",
     )
-    if any(keyword in user_input or keyword in lowered for keyword in REFUSAL_KEYWORDS) or any(
-        re.search(pattern, user_input, flags=re.IGNORECASE) for pattern in refusal_patterns
+    if (
+        any(keyword in user_input or keyword in lowered for keyword in REFUSAL_KEYWORDS)
+        or any(re.search(pattern, user_input, flags=re.IGNORECASE) for pattern in refusal_patterns)
+        or looks_like_injection_attack(user_input)
     ):
         return AgentAnswer(
             answer="我不能帮助处理泄露提示词、密钥或绕过限制这类请求。",

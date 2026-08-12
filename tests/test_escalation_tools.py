@@ -49,6 +49,7 @@ class TestCreateEscalationDraft:
             "suggested_team",
             "escalation_summary",
             "recommended_next_step",
+            "needs_human_confirmation",
         }
         assert draft["severity"] in {"urgent", "high", "medium", "low"}
         assert draft["suggested_team"] in {
@@ -64,6 +65,16 @@ class TestCreateEscalationDraft:
         draft = create_escalation_draft("生产环境服务中断 多个用户无法访问", [])
         assert draft["severity"] == "urgent"
         assert "立即升级" in draft["recommended_next_step"]
+
+    def test_high_severity_requires_human_confirmation(self) -> None:
+        draft = create_escalation_draft("多个用户无法登录 核心功能不可用", [])
+        assert draft["severity"] == "high"
+        assert draft["needs_human_confirmation"] is True
+
+    def test_low_severity_no_confirmation_required(self) -> None:
+        draft = create_escalation_draft("常规咨询", [])
+        assert draft["severity"] == "low"
+        assert draft["needs_human_confirmation"] is False
 
     def test_empty_summary_does_not_crash(self) -> None:
         draft = create_escalation_draft("   ", [])
