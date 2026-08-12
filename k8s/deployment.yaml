@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: knowledge-ops-agent
+  labels:
+    app: knowledge-ops-agent
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: knowledge-ops-agent
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: knowledge-ops-agent
+    spec:
+      containers:
+        - name: api
+          image: max23-dame0/knowledge-ops-agent:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+              name: http
+          env:
+            - name: LOG_FORMAT
+              value: "json"
+            - name: APP_VERSION
+              value: "0.1.0"
+            - name: LLM_MODEL_ID
+              valueFrom:
+                secretKeyRef:
+                  name: knowledge-ops-secrets
+                  key: LLM_MODEL_ID
+            - name: LLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: knowledge-ops-secrets
+                  key: LLM_API_KEY
+            - name: LLM_BASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: knowledge-ops-secrets
+                  key: LLM_BASE_URL
+            - name: API_AUTH_KEYS
+              valueFrom:
+                secretKeyRef:
+                  name: knowledge-ops-secrets
+                  key: API_AUTH_KEYS
+            - name: RATE_LIMIT_PER_MINUTE
+              value: "30"
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 5
+          volumeMounts:
+            - name: kb-index
+              mountPath: /app/data/index
+              readOnly: true
+      volumes:
+        - name: kb-index
+          configMap:
+            name: knowledge-ops-index
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: knowledge-ops-agent
+  labels:
+    app: knowledge-ops-agent
+spec:
+  selector:
+    app: knowledge-ops-agent
+  ports:
+    - port: 80
+      targetPort: http
+      name: http
+  type: ClusterIP

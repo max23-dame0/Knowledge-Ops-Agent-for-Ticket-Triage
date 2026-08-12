@@ -1,0 +1,15 @@
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.git/
+.gitignore
+data/eval_results/
+data/audit/
+.env
+*.md
+!manual_review_checklist.md
+!README.md
+tests/
