@@ -20,12 +20,19 @@ def retrieve_kb(
     metadata_path: str = DEFAULT_METADATA_PATH,
     model_name: str = DEFAULT_MODEL_NAME,
     passage_max_chars: int = 280,
+    use_hybrid: bool = True,
+    min_score: float = 0.25,
+    vector_weight: float = 0.7,
 ) -> list[dict[str, object]]:
     """Retrieve the most relevant knowledge base passages for a query.
 
     Uses the shared KBRepository by default so the FAISS index, metadata, and
     embedding model are loaded once and cached across calls. When a non-default
     index location is requested, an ad-hoc repository is built for that call.
+
+    Hybrid mode (default) blends vector similarity with a dependency-free
+    BM25 keyword score and marks weak hits with `low_confidence=True` when the
+    fused score is below `min_score`.
     """
     repo = _resolve_repository(index_path, metadata_path, model_name)
     if not repo.available():
@@ -39,25 +46,44 @@ def retrieve_kb(
 
     import numpy as np
 
+    from src.rag.hybrid import BM25Scorer, fuse_scores
+
     model = repo.get_embedding_model(model_name)
     query_vector = model.encode([query], convert_to_numpy=True, show_progress_bar=False)
     query_vector = np.asarray(query_vector, dtype="float32")
 
     index = repo.get_index()
-    search_k = min(max(top_k, 1), len(metadata))
+    search_k = min(max(top_k * 4, 1), len(metadata))  # oversample for hybrid re-ranking
     distances, indices = index.search(query_vector, search_k)
 
-    results: list[dict[str, object]] = []
+    vector_scores_by_index: dict[int, float] = {}
     for distance, item_index in zip(distances[0], indices[0]):
-        if item_index < 0:
-            continue
+        if item_index >= 0:
+            vector_scores_by_index[int(item_index)] = 1.0 / (1.0 + float(distance))
 
+    bm25 = None
+    if use_hybrid:
+        bm25 = BM25Scorer([item["text"] for item in metadata])
+        bm25_scores = bm25.score_normalized(query)
+
+    candidates: list[tuple[float, int]] = []
+    for item_index, vector_score in vector_scores_by_index.items():
+        if use_hybrid and bm25 is not None:
+            fused = fuse_scores([vector_score], [bm25_scores[item_index]], vector_weight=vector_weight)[0]
+        else:
+            fused = vector_score
+        candidates.append((fused, item_index))
+    candidates.sort(key=lambda pair: pair[0], reverse=True)
+
+    results: list[dict[str, object]] = []
+    for fused_score, item_index in candidates[:top_k]:
         item = metadata[item_index]
         results.append(
             {
                 "source_title": item["source_title"],
                 "passage": _truncate_passage(item["text"], passage_max_chars),
-                "score": round(1.0 / (1.0 + float(distance)), 4),
+                "score": round(fused_score, 4),
+                "low_confidence": bool(fused_score < min_score),
             }
         )
 

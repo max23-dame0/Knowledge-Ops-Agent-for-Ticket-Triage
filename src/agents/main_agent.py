@@ -87,6 +87,7 @@ def _record_tool_call(tool_name: str, tool_input: dict[str, Any], tool_output: d
                     "source_title": item.get("source_title"),
                     "passage": item.get("passage"),
                     "score": item.get("score"),
+                    "low_confidence": item.get("low_confidence", False),
                 }
                 for item in tool_output.get("results", [])
             ],
@@ -457,10 +458,12 @@ def _build_evidence_from_tool_calls(tool_calls: list[dict[str, Any]]) -> list[st
                 source_title = item.get("source_title") or "unknown_source"
                 passage = " ".join((item.get("passage") or "").strip().split())
                 passage_summary = passage[:160].strip()
+                low_confidence = item.get("low_confidence", False)
+                suffix = " | low_confidence" if low_confidence else ""
                 if passage_summary:
-                    evidence.append(f"KB source={source_title} | passage={passage_summary}")
+                    evidence.append(f"KB source={source_title} | passage={passage_summary}{suffix}")
                 else:
-                    evidence.append(f"KB source={source_title}")
+                    evidence.append(f"KB source={source_title}{suffix}")
 
         elif tool_name == "get_ticket_status":
             ticket = call.get("ticket") or {}

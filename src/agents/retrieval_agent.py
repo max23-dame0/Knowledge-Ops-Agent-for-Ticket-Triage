@@ -13,6 +13,10 @@ class RetrievalHit(BaseModel):
     source_title: str = Field(description="Knowledge base source title.")
     passage: str = Field(description="Retrieved passage text.")
     score: float = Field(description="Relevance score from KB retrieval.")
+    low_confidence: bool = Field(
+        default=False,
+        description="True when the hit is below the relevance threshold.",
+    )
 
 
 class RetrievalOutput(BaseModel):

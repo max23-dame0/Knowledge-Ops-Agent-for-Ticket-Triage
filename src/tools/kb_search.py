@@ -13,6 +13,11 @@ class KBSearchResult(BaseModel):
     source_title: str = Field(description="The markdown document name that produced the result.")
     passage: str = Field(description="A short passage from the matched knowledge base chunk.")
     score: float = Field(description="A relevance score where higher values are more relevant.")
+    low_confidence: bool = Field(
+        default=False,
+        description="True when the fused score is below the relevance threshold; "
+        "the answer should be treated as weakly grounded.",
+    )
 
 
 class KBSearchResponse(BaseModel):

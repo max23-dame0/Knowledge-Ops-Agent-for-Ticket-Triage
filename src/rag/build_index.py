@@ -15,8 +15,14 @@ def build_kb_index(
     model_name: str = "all-MiniLM-L6-v2",
     chunk_size: int = 400,
     overlap: int = 80,
+    index_type: str = "hnsw",
 ) -> dict[str, Any]:
-    """Build a local FAISS index and metadata files from markdown knowledge base documents."""
+    """Build a local FAISS index and metadata files from markdown knowledge base documents.
+
+    index_type:
+    - "hnsw": approximate HNSW index (scales better for large corpora; default)
+    - "flat": exact brute-force L2 index (baseline, kept for small corpora)
+    """
     import faiss
     import numpy as np
     from sentence_transformers import SentenceTransformer
@@ -30,7 +36,13 @@ def build_kb_index(
     embeddings = model.encode(texts, convert_to_numpy=True, show_progress_bar=False)
     vectors = np.asarray(embeddings, dtype="float32")
 
-    index = faiss.IndexFlatL2(vectors.shape[1])
+    if index_type == "hnsw":
+        # HNSW32 with a modest construction budget: good quality/speed trade-off.
+        index = faiss.IndexHNSWFlat(vectors.shape[1], 32)
+        index.hnsw.efConstruction = 128
+        index.hnsw.efSearch = 64
+    else:
+        index = faiss.IndexFlatL2(vectors.shape[1])
     index.add(vectors)
 
     output_path = Path(output_dir)
@@ -51,6 +63,7 @@ def build_kb_index(
         "chunk_count": len(chunks),
         "embedding_dim": int(vectors.shape[1]),
         "model_name": model_name,
+        "index_type": index_type,
     }
 
 
