@@ -5,3 +5,5 @@ pandas
 faiss-cpu
 python-dotenv
 sentence-transformers
+fastapi>=0.110
+uvicorn[standard]>=0.29
