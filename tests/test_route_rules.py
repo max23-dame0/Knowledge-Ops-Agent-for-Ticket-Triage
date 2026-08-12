@@ -38,8 +38,14 @@ class TestResolveRoute:
         is_escalation = _looks_like_escalation_query(question)
         assert _resolve_route(question, is_ticket, is_escalation) == expected
 
-    def test_route_fallback_defaults_to_kb(self) -> None:
-        assert _resolve_route("你好", False, False) == "kb"
+    def test_route_fallback_defaults_to_clarify(self) -> None:
+        # No business keywords (chit-chat / out-of-domain) must not be
+        # hard-routed to kb, where an empty retrieval invites hallucination.
+        assert _resolve_route("你好", False, False) == "clarify"
+        assert _resolve_route("how are you doing today", False, False) == "clarify"
+
+    def test_bare_policy_question_routes_to_kb(self) -> None:
+        assert _resolve_route("sla 首次响应时限是多少", False, False) == "kb"
 
 
 class TestTicketIdExtraction:

@@ -33,6 +33,7 @@ data/eval_results/
 data/raw/
 data/processed/
 data/audit/
+data/eval_datasets/
 
 # IDE settings
 .vscode/

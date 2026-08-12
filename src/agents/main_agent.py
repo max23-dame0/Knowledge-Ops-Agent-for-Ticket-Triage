@@ -578,8 +578,17 @@ def _finalize_response(response: AgentAnswer, route: str) -> AgentAnswer:
 
 
 def _resolve_route(user_input: str, is_ticket_query: bool, is_escalation_query: bool) -> str:
-    """Resolve the likely route before the agent runs."""
+    """Resolve the likely route before the agent runs.
+
+    Fallback is clarify (not kb): inputs without any business keywords
+    (English, chit-chat, out-of-domain) must not be hard-routed to KB,
+    where an empty retrieval would create a hallucination risk.
+    """
     if _looks_like_kb_policy_query(user_input):
+        return "kb"
+    # Bare policy questions ("sla 首次响应时限是多少") without ticket/escalation
+    # markers are KB questions too; keep them out of the clarify fallback.
+    if any(hint in user_input for hint in KB_POLICY_HINTS):
         return "kb"
     if is_ticket_query and _extract_ticket_id(user_input) is not None and not _has_strong_escalation_signal(user_input):
         return "ticket"
@@ -589,7 +598,7 @@ def _resolve_route(user_input: str, is_ticket_query: bool, is_escalation_query: 
         return "ticket"
     if any(keyword in user_input for keyword in KB_KEYWORDS):
         return "kb"
-    return "kb"
+    return "clarify"
 
 
 def _coerce_agent_output(final_output: Any) -> AgentAnswer:
