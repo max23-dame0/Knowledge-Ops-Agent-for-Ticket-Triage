@@ -20,6 +20,7 @@ from src.tools.escalation_tools import (
 )
 from src.tools.ticket_tools import get_ticket_status as base_get_ticket_status
 from src.tools.ticket_tools import normalize_ticket_id
+from src.utils.audit import get_audit_trail
 from src.utils.config import get_openai_settings
 from src.utils.logging import get_logger
 from src.utils.resilience import CircuitBreaker, ResponseCache
@@ -340,8 +341,36 @@ def build_main_agent() -> Agent[Any]:
 
 
 def run_agent(user_input: str) -> AgentAnswer:
-    """Run the main agent once and normalize the final response for app consumption."""
+    """Run the main agent once, audit the decision, and return the normalized response."""
     _CURRENT_TOOL_CALLS.clear()
+    normalized = user_input.strip()
+    from src.utils.logging import get_request_id
+
+    request_id = get_request_id()
+    get_audit_trail().record(
+        {
+            "event": "agent_request",
+            "request_id": request_id,
+            "question": normalized,
+        }
+    )
+    response = _run_agent_inner(normalized)
+    get_audit_trail().record(
+        {
+            "event": "agent_response",
+            "request_id": request_id,
+            "route": response.route,
+            "conclusion": response.conclusion,
+            "tool_calls": len(response.tool_calls),
+            "refused": response.refused,
+            "clarified": response.clarified,
+        }
+    )
+    return response
+
+
+def _run_agent_inner(user_input: str) -> AgentAnswer:
+    """Execute the agent decision chain (prechecks + LLM run) and normalize the output."""
     normalized = user_input.strip()
     logger.info("user_input=%s", normalized or "<empty>")
 

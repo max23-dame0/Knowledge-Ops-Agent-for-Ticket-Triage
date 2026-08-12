@@ -32,6 +32,7 @@ MANIFEST
 data/eval_results/
 data/raw/
 data/processed/
+data/audit/
 
 # IDE settings
 .vscode/
