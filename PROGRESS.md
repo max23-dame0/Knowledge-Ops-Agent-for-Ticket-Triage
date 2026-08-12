@@ -9,17 +9,23 @@
 
 | # | 任务 | 阶段 | 状态 | 下一步 | 阻塞 |
 |:--:|------|------|:--:|------|------|
-| 1 | Harness 环境首次搭建（AGENTS/MEMORY/PROGRESS/DECISIONS/rules/handoff） | 已生成 | 🟡 已验证待提交 | 人工 review 后 commit（`.codebuddy/` + 4 个根文件） | 无 |
-| 2 | 核心功能基线（main_agent + RAG + tools + eval） | 已完成 | ✅ 已提交（git log: 0c254fa 及之前） | 无 | 无 |
+| 1 | 企业就绪度修复 Phase A（密钥清理/单测/CI） | 已完成 | ✅ 已提交（afe838a/b1ed522/9dab6ed） | 无 | 无 |
+| 2 | 企业就绪度修复 Phase B（日志/Repository/熔断缓存/API服务/部署） | 已完成 | ✅ 已提交（16d3e32..4c27fe8） | 部署验证需真实环境 | 无 |
+| 3 | 企业就绪度修复 Phase C（混合检索/安全闸/审计/多轮会话） | 已完成 | ✅ 已提交（d7b593d..3a37515） | CI 全依赖跑 faiss 单测 | 无 |
+| 4 | 企业就绪度差距分析文档 | 已完成 | ✅ 已提交（含修复完成记录） | 无 | 无 |
+| 5 | Harness 环境首次搭建（AGENTS/MEMORY/PROGRESS/DECISIONS/rules/handoff） | 已完成 | ✅ 已提交（3a545fa） | 无 | 无 |
+| 6 | 核心功能基线（main_agent + RAG + tools + eval） | 已完成 | ✅ 已提交（git log: 0c254fa 及之前） | 无 | 无 |
 
 ## 当前验证状态
 
 | 检查项 | 状态 |
 |------|------|
-| `.venv\Scripts\python.exe -m src.rag.build_index` | ⬜ 未在本会话验证（基线已建索引：`data/index/`） |
-| `... run_evals --mode regression`（基线：11 个用例，需 LLM 环境） | ⬜ 未在本会话验证（需 `.env` + 模型端点） |
-| lint 检查 | ⬜ 未运行（`py_compile` 可作最低检查） |
-| git status / 未提交清单 | 🟡 未提交：`.codebuddy/` 全部 + AGENTS.md/PROGRESS.md/DECISIONS.md |
+| `pytest tests/`（158 passed / 2 skipped，skipped=faiss 重依赖待 CI 全依赖验证） | ✅ 已验证（2026-08-12） |
+| `ruff check src tests app.py` | ✅ 0 错误（2026-08-12） |
+| `.venv\Scripts\python.exe -m src.rag.build_index`（HNSW 默认） | ⬜ 待执行（索引升级后需重建验证） |
+| `... run_evals --mode regression`（基线：11+ 用例，需 LLM 环境） | ⬜ 未验证（需 `.env` + 模型端点） |
+| FastAPI 冒烟（/healthz、/agent/ask） | ✅ TestClient 已验证；真实部署待执行 |
+| git status / 未提交清单 | 🟡 待提交：差距分析文档更新 + PROGRESS 更新 |
 | 当前 blocker | 无 |
 
 ## 未提交改动清单（与 git 强一致）
@@ -28,7 +34,8 @@
 
 | 改动 | 状态 | 计划 commit | 关联任务 |
 |------|:--:|------|------|
-| Harness 文件（AGENTS.md / PROGRESS.md / DECISIONS.md / .codebuddy/） | 🟡 已生成待提交 | 人工 review 后单次 commit | 1 |
+| Harness 文件（AGENTS.md / PROGRESS.md / DECISIONS.md / .codebuddy/） | ✅ 已提交（3a545fa） | 已完成 | - |
+| 企业就绪度差距分析文档（含修复完成记录）+ PROGRESS 更新 | 🟡 已更新待提交 | 本轮收尾 commit | 1-4 |
 
 ## 整体进度
 
@@ -50,4 +57,5 @@
 
 | 日期 | 做了什么（一行） | 验证 | 下一步 | 日志 |
 |------|---------|:--:|------|
-| 2026-08-12 | 首次搭建 harness：扫描项目（Python + openai-agents + Streamlit + FAISS），生成 AGENTS.md / MEMORY.md / PROGRESS.md / DECISIONS.md / rules/（6 个）/ harness 辅助文件（3 个） | 生成完整性检查 | 人工 review 后 commit | `.codebuddy/memory/2026-08-12.md` |
+| 2026-08-12 | 修复 12 项企业就绪度差距（Phase A/B/C 全部完成）：密钥清理、158 单测、CI、结构化日志、Repository、熔断缓存、FastAPI+认证限流、Docker/K8s、HNSW+BM25、注入防护+对抗用例+人工确认闸、审计轨迹、多轮会话+反馈 | ruff 0 错误 / pytest 158 passed / 13 commits | CI 全依赖跑 faiss 单测；真实环境部署验证 | `.codebuddy/memory/2026-08-12.md` |
+| 2026-08-12 | 首次搭建 harness：生成 AGENTS.md / MEMORY.md / PROGRESS.md / DECISIONS.md / rules/（6 个）/ harness 辅助文件（3 个） | 生成完整性检查 | 已 commit（3a545fa） | `.codebuddy/memory/2026-08-12.md` |
