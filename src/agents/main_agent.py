@@ -21,9 +21,18 @@ from src.tools.ticket_tools import get_ticket_status as base_get_ticket_status
 from src.tools.ticket_tools import normalize_ticket_id
 from src.utils.config import get_openai_settings
 from src.utils.logging import get_logger
+from src.utils.resilience import CircuitBreaker, ResponseCache
 
 logger = get_logger("knowledge_ops.agent")
 _CURRENT_TOOL_CALLS: list[dict[str, Any]] = []
+
+# Endpoint resilience: fail fast when the model endpoint is unhealthy, and
+# serve repeated identical questions from the bounded cache to save tokens.
+_circuit_breaker = CircuitBreaker(failure_threshold=3, cooldown_seconds=30.0)
+_response_cache = ResponseCache(maxsize=128)
+
+# Model endpoint timeout in seconds (guards against hung upstream calls).
+_MODEL_TIMEOUT_SECONDS = 60.0
 
 
 class AgentAnswer(BaseModel):
@@ -318,7 +327,11 @@ def build_main_agent() -> Agent[Any]:
         name="knowledge_ops_main_agent",
         instructions=MAIN_AGENT_INSTRUCTIONS,
         model=model,
-        model_settings=ModelSettings(temperature=0, tool_choice="auto"),
+        model_settings=ModelSettings(
+            temperature=0,
+            tool_choice="auto",
+            timeout=_MODEL_TIMEOUT_SECONDS,
+        ),
         tools=[kb_search_tool, ticket_status_tool, escalation_draft_tool],
     )
 
@@ -364,6 +377,13 @@ def run_agent(user_input: str) -> AgentAnswer:
         settings.base_url or "<default>",
     )
 
+    # Response cache: repeated identical questions short-circuit the LLM call.
+    cache_key = normalized.strip().lower()
+    cached = _response_cache.get(cache_key)
+    if cached is not None:
+        logger.info("response_summary=cache_hit | route:%s", cached.route)
+        return cached
+
     agent_input = normalized
     if route == "escalation" and _has_strong_escalation_signal(normalized):
         agent_input = (
@@ -372,13 +392,43 @@ def run_agent(user_input: str) -> AgentAnswer:
             f"User question: {normalized}"
         )
 
-    result = Runner.run_sync(
-        build_main_agent(),
-        agent_input,
-        run_config=RunConfig(tracing_disabled=True),
-    )
+    if not _circuit_breaker.allow_request():
+        logger.warning("circuit_open=true | failing fast for question=%s", normalized)
+        degraded = _finalize_response(
+            AgentAnswer(
+                answer="模型服务暂时不可用，请稍后重试。",
+                conclusion="模型服务暂时不可用，请稍后重试。",
+                evidence=[],
+                next_action=["稍后重试，或联系支持团队。"],
+                next_actions=["稍后重试，或联系支持团队。"],
+                human_handoff=True,
+                should_handoff=True,
+                confidence=0.0,
+                tool_calls=[],
+                route=route,
+                clarified=False,
+                refused=False,
+                needs_clarification=False,
+                clarification_question=None,
+            ),
+            route=route,
+        )
+        return degraded
 
+    try:
+        result = Runner.run_sync(
+            build_main_agent(),
+            agent_input,
+            run_config=RunConfig(tracing_disabled=True),
+        )
+    except Exception as exc:
+        _circuit_breaker.record_failure()
+        logger.error("agent_runtime_error=%s | circuit_state=%s", exc, _circuit_breaker.state)
+        raise
+
+    _circuit_breaker.record_success()
     response = _finalize_response(_coerce_agent_output(result.final_output), route=route)
+    _response_cache.put(cache_key, response)
     logger.info(
         "response_summary=route:%s | conclusion:%s | handoff:%s | confidence:%.2f | tool_calls:%s",
         response.route,
