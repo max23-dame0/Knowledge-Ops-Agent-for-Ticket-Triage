@@ -11,7 +11,7 @@ pytest.importorskip("httpx")
 
 from fastapi.testclient import TestClient
 
-from src.api.app import app  # noqa: E402
+from src.api.app import app
 
 client = TestClient(app)
 
@@ -87,7 +87,7 @@ class TestAuth:
 class TestRateLimit:
     def test_rate_limit_429(self, auth_env, monkeypatch) -> None:
         monkeypatch.setenv("RATE_LIMIT_PER_MINUTE", "2")
-        import src.api.ratelimit as ratelimit
+        from src.api import ratelimit
 
         ratelimit._counter = ratelimit._SlidingWindowCounter()  # fresh counter
 
