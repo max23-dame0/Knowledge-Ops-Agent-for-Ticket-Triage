@@ -37,6 +37,9 @@ data/processed/
 .vscode/
 .idea/
 
+# CodeBuddy agent memory (local-only, not versioned)
+.codebuddy/memory/
+
 # OS-specific
 Thumbs.db
 Desktop.ini
