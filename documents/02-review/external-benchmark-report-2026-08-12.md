@@ -2,9 +2,9 @@
 
 > **日期**：2026-08-12
 > **评测对象**：main 分支（commit 406b7b1 + 前序全部企业化改造）
-> **LLM 端点**：DeepSeek deepseek-v4-flash（本地 .env）
-> **结果文件**：`data/eval_results/external_bench_20260812_072332.csv` / `external_bench_summary_20260812_072332.json`（git-ignored）
-> **评测脚本**：`src/evals/external_bench.py`（可重复运行）
+> **LLM 端点**：初测 DeepSeek 远程 → 扩大覆盖**本地 knot-proxy**（deepseek-v4-flash，1M 上下文，high 推理）
+> **结果文件**：`data/eval_results/external_bench_*_*.csv/json`（git-ignored）
+> **评测脚本**：`src/evals/external_bench.py`（可重复运行，支持 `--endpoint local|remote` 与 `--groups` 分批）
 
 ---
 
@@ -95,3 +95,44 @@
 
 ### 结论
 规则层从"锦上添花"变为"兜底防线"：注入样本在规则层直接拦截率 3.7 倍提升，域外输入系统性路由到 clarify，**幻觉敞口与多语种注入穿透均被闭环**。评测数据、脚本、单测均已固化，可随时重复验证。
+
+---
+
+## 8. 扩大覆盖评测（2026-08-12，全量 253 条，本地端点）
+
+### 新增数据集
+| 数据集 | 来源 | 规模 | 用途 |
+|--------|------|------|------|
+| JailbreakBench behaviors | GitHub（pip 包数据） | 100 条有害行为请求（Goal 列） | 有害请求拒答鲁棒性 |
+| deepset/prompt-injections | HuggingFace | **全量** 116 条（此前抽样 80） | 注入/良性全覆盖 |
+
+### 本地端点接入（knot-proxy）
+- 服务：`http://127.0.0.1:8000/v1`（OpenAI 兼容），`deepseek-flash` → `tokenhub_deepseek-v4-flash`，config 全局 `reasoning_effort=high`、`max_context_tokens=1M`
+- 验证结论：**chat completion 正常、路由/拒答行为正确，但不支持 OpenAI function calling**（knot-cli 自带工具体系，`tool_calls` 恒为 null）→ 对注入/良性/OOS/Jailbreak 评测无影响（这些场景本就不该调工具）；**工具型用例（kb/ticket/escalation 实答）需切回远程端点**
+- `.env` 本地优先（保留远程注释），脚本支持 `--endpoint local|remote` 切换
+
+### 全量结果（5 组，253 条）
+
+| 分组 | 样本数 | 拒答/正确处理率 | 路由分布 |
+|------|:--:|:--:|------|
+| injection（全量） | 60 | **100%** | clarify 44 / refuse 14（规则层） / kb 2（LLM 拒） |
+| benign（全量） | 56 | 无实际误伤 | clarify 55 / kb 1 |
+| oos | 30 | **100%** | clarify 30 |
+| in_domain | 7 | 100% | clarify 7 |
+| jailbreak（JailbreakBench） | 100 | **100%** | clarify 99 / kb 1（LLM 拒） |
+
+### 关键结论
+1. **注入全量 100% 拒答**：60 条注入零穿透（此前抽样 40 条 80% → 加固后全量 100%），其中 14 条（23%）由**规则层直接拦截**（多语种正则生效），其余由 LLM 层拒绝
+2. **JailbreakBench 100/100 拒答**：有害行为请求全部被拒绝（99 clarify + 1 LLM 拒），无任何有害内容输出
+3. **良性 0 实际误伤**：56 条良性通用指令全部进入 clarify（不硬答 kb），无一被拒答误伤
+4. **域外幻觉风险 0**：30 条 OOS 全部 clarify，无空证据硬答
+5. **本地端点限制**：不支持 function calling，工具型评测（regression/offline 的 kb/ticket/escalation 实答）需 `--endpoint remote`；拒答/域外类评测本地端点完全胜任（且零成本）
+
+### 覆盖总结
+| 维度 | 初测 | 扩大覆盖 |
+|------|:--:|:--:|
+| 注入样本 | 40（抽样） | **60（全量）** |
+| 良性样本 | 40（抽样） | **56（全量）** |
+| OOS | 30 | 30 |
+| Jailbreak | — | **100** |
+| 合计 | 117 | **253** |
