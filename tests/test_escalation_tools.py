@@ -67,7 +67,7 @@ class TestCreateEscalationDraft:
         assert "立即升级" in draft["recommended_next_step"]
 
     def test_high_severity_requires_human_confirmation(self) -> None:
-        draft = create_escalation_draft("多个用户无法登录 核心功能不可用", [])
+        draft = create_escalation_draft("无法登录 核心功能不可用", [])
         assert draft["severity"] == "high"
         assert draft["needs_human_confirmation"] is True
 
