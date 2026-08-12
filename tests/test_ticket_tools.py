@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from src.tools import ticket_tools
 from src.tools.ticket_tools import get_ticket_status, normalize_ticket_id
 
 
@@ -47,15 +48,11 @@ class TestGetTicketStatus:
         assert result["error"] is not None
         assert "not found" in result["error"].lower()
 
-    def test_missing_file_returns_structured_error(self, monkeypatch) -> None:
-        class FakePath:
-            def __init__(self, value: str) -> None:
-                self.value = value
+    def test_missing_file_returns_structured_error(self, monkeypatch, tmp_path) -> None:
+        from src.repositories.ticket_repository import TicketRepository
 
-            def exists(self) -> bool:
-                return False
-
-        monkeypatch.setattr("src.tools.ticket_tools.Path", FakePath)
+        missing_repo = TicketRepository(path=str(tmp_path / "missing.json"))
+        monkeypatch.setattr(ticket_tools, "_repo", missing_repo)
         result = get_ticket_status("TKT-1001")
         assert result["found"] is False
         assert "not found" in result["error"].lower()

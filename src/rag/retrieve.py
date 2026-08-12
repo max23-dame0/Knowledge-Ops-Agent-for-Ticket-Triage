@@ -2,54 +2,48 @@
 
 from __future__ import annotations
 
-import json
-from functools import lru_cache
-from pathlib import Path
+from src.repositories.kb_repository import KBRepository, get_kb_repository
 
 # Heavy dependencies (faiss / numpy / sentence-transformers) are imported
 # lazily inside the functions below. This keeps the import chain light so
 # agent routing logic can be imported and unit-tested without the RAG stack.
 
 DEFAULT_MODEL_NAME = "all-MiniLM-L6-v2"
-
-
-@lru_cache(maxsize=1)
-def _get_embedding_model(model_name: str):
-    """Load and cache the sentence-transformers model for repeated local queries."""
-    from sentence_transformers import SentenceTransformer
-
-    return SentenceTransformer(model_name)
+DEFAULT_INDEX_PATH = "data/index/kb_index.faiss"
+DEFAULT_METADATA_PATH = "data/index/kb_metadata.json"
 
 
 def retrieve_kb(
     query: str,
     top_k: int = 3,
-    index_path: str = "data/index/kb_index.faiss",
-    metadata_path: str = "data/index/kb_metadata.json",
+    index_path: str = DEFAULT_INDEX_PATH,
+    metadata_path: str = DEFAULT_METADATA_PATH,
     model_name: str = DEFAULT_MODEL_NAME,
     passage_max_chars: int = 280,
 ) -> list[dict[str, object]]:
-    """Retrieve the most relevant knowledge base passages for a query."""
-    import faiss
-    import numpy as np
+    """Retrieve the most relevant knowledge base passages for a query.
 
-    index_file = Path(index_path)
-    metadata_file = Path(metadata_path)
-
-    if not index_file.exists() or not metadata_file.exists():
+    Uses the shared KBRepository by default so the FAISS index, metadata, and
+    embedding model are loaded once and cached across calls. When a non-default
+    index location is requested, an ad-hoc repository is built for that call.
+    """
+    repo = _resolve_repository(index_path, metadata_path, model_name)
+    if not repo.available():
         raise FileNotFoundError(
             "Local index files are missing. Expected data/index/kb_index.faiss and data/index/kb_metadata.json."
         )
 
-    metadata = json.loads(metadata_file.read_text(encoding="utf-8-sig"))
+    metadata = repo.get_metadata()
     if not metadata:
         return []
 
-    model = _get_embedding_model(model_name)
+    import numpy as np
+
+    model = repo.get_embedding_model(model_name)
     query_vector = model.encode([query], convert_to_numpy=True, show_progress_bar=False)
     query_vector = np.asarray(query_vector, dtype="float32")
 
-    index = faiss.read_index(str(index_file))
+    index = repo.get_index()
     search_k = min(max(top_k, 1), len(metadata))
     distances, indices = index.search(query_vector, search_k)
 
@@ -68,6 +62,14 @@ def retrieve_kb(
         )
 
     return results
+
+
+def _resolve_repository(index_path: str, metadata_path: str, model_name: str) -> KBRepository:
+    """Return the shared repository for default paths, else an ad-hoc instance."""
+    default_repo = get_kb_repository()
+    if index_path == DEFAULT_INDEX_PATH and metadata_path == DEFAULT_METADATA_PATH:
+        return default_repo
+    return KBRepository(index_path=index_path, metadata_path=metadata_path, model_name=model_name)
 
 
 def _truncate_passage(text: str, max_chars: int) -> str:
