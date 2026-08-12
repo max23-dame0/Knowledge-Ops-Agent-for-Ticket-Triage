@@ -7,7 +7,7 @@ import csv
 import sys
 import time
 from collections import Counter
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -25,7 +25,6 @@ from src.rag.build_index import build_kb_index
 from src.rag.chunking import chunk_kb_documents
 from src.tools.kb_search import search_kb
 from src.utils.config import get_openai_settings
-
 
 DEFAULT_QUERY = "VPN 登录失败提示 token 过期怎么办"
 DEFAULT_EVAL_PATH = "data/eval_set.csv"
@@ -111,7 +110,7 @@ def run_kb_smoke_test(
         )
         print("[PASS] KB smoke test completed successfully")
         return 0
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - smoke/eval tolerance by design: report and continue
         print(f"[FAIL] KB smoke test failed: {exc}")
         return 1
 
@@ -130,7 +129,7 @@ def run_llm_smoke_test(
             "[OK] LLM config loaded: "
             f"model={settings.model} base_url={settings.base_url or '<default>'} api_key={masked_key}"
         )
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - smoke/eval tolerance by design: report and continue
         print(f"[FAIL] Config issue: {exc}")
         print("[HINT] Check LLM_API_KEY, LLM_MODEL_ID, and optional LLM_BASE_URL in your environment or .env file.")
         return 1
@@ -138,7 +137,7 @@ def run_llm_smoke_test(
     try:
         agent = build_main_agent()
         print(f"[OK] Agent created: name={agent.name}")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - smoke/eval tolerance by design: report and continue
         print(f"[FAIL] Agent creation issue: {exc}")
         return 1
 
@@ -152,7 +151,7 @@ def run_llm_smoke_test(
             "[OK] Index ready: "
             f"chunks={build_result['chunk_count']} index={build_result['index_path']}"
         )
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - smoke/eval tolerance by design: report and continue
         print(f"[FAIL] Index issue: {exc}")
         return 1
 
@@ -166,7 +165,7 @@ def run_llm_smoke_test(
             "[OK] Tool call succeeded: "
             f"top_source={results[0]['source_title']} score={results[0]['score']}"
         )
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - smoke/eval tolerance by design: report and continue
         print(f"[FAIL] Tool issue: {exc}")
         return 1
 
@@ -178,7 +177,7 @@ def run_llm_smoke_test(
         )
         print("[PASS] LLM smoke test completed successfully")
         return 0
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - smoke/eval tolerance by design: report and continue
         print(f"[FAIL] Agent runtime issue: {exc}")
         return 1
 
@@ -206,7 +205,7 @@ def run_regression_smoke_test() -> int:
             )
             if ok:
                 passed += 1
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - smoke/eval tolerance by design: report and continue
             results.append(
                 {
                     "name": case["name"],
@@ -261,7 +260,7 @@ def _build_result_path(output_dir: str) -> Path:
     """Create a timestamped output path for offline evaluation records."""
     path = Path(output_dir)
     path.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     return path / f"offline_eval_results_{timestamp}.csv"
 
 
@@ -304,7 +303,7 @@ def run_offline_eval(
     """Run a minimal offline evaluation loop over the CSV dataset."""
     try:
         rows = load_eval_rows(eval_path)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - smoke/eval tolerance by design: report and continue
         print(f"[FAIL] Could not load eval set: {exc}")
         return 1
 
@@ -338,7 +337,7 @@ def run_offline_eval(
 
         try:
             actual = _run_agent_with_retry(question)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - smoke/eval tolerance by design: report and continue
             failure_count += 1
             failed_samples.append({"id": sample_id, "question": question, "error": str(exc)})
             per_sample_results.append(

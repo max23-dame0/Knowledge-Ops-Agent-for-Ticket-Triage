@@ -6,7 +6,6 @@ import argparse
 import csv
 from pathlib import Path
 
-
 DEFAULT_RESULTS_DIR = "data/eval_results"
 
 

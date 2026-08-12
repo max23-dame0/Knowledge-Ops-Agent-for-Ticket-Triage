@@ -6,10 +6,6 @@ import json
 from pathlib import Path
 from typing import Any
 
-import faiss
-import numpy as np
-from sentence_transformers import SentenceTransformer
-
 from src.rag.chunking import chunk_kb_documents
 
 
@@ -21,6 +17,10 @@ def build_kb_index(
     overlap: int = 80,
 ) -> dict[str, Any]:
     """Build a local FAISS index and metadata files from markdown knowledge base documents."""
+    import faiss
+    import numpy as np
+    from sentence_transformers import SentenceTransformer
+
     chunks = chunk_kb_documents(input_dir=input_dir, chunk_size=chunk_size, overlap=overlap)
     if not chunks:
         raise ValueError(f"No markdown chunks were created from: {input_dir}")

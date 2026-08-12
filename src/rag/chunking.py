@@ -37,12 +37,9 @@ def _split_text(text: str, chunk_size: int, overlap: int) -> list[str]:
     if not cleaned:
         return []
 
-    if chunk_size < 300:
-        chunk_size = 300
-    if chunk_size > 500:
-        chunk_size = 500
-    if overlap < 0:
-        overlap = 0
+    chunk_size = max(chunk_size, 300)
+    chunk_size = min(chunk_size, 500)
+    overlap = max(overlap, 0)
     if overlap >= chunk_size:
         overlap = max(0, chunk_size // 5)
 

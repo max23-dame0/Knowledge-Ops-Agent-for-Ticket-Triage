@@ -8,13 +8,15 @@ import re
 import sys
 from typing import Any
 
-from agents import Agent, ModelSettings, RunConfig, Runner, function_tool
 from agents.models.openai_chatcompletions import OpenAIChatCompletionsModel
 from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
 
+from agents import Agent, ModelSettings, RunConfig, Runner, function_tool
 from src.agents.retrieval_agent import retrieve_evidence
-from src.tools.escalation_tools import create_escalation_draft as base_create_escalation_draft
+from src.tools.escalation_tools import (
+    create_escalation_draft as base_create_escalation_draft,
+)
 from src.tools.ticket_tools import get_ticket_status as base_get_ticket_status
 from src.tools.ticket_tools import normalize_ticket_id
 from src.utils.config import get_openai_settings
@@ -519,7 +521,7 @@ def _coerce_agent_output(final_output: Any) -> AgentAnswer:
         if json_candidate is not None:
             try:
                 return AgentAnswer.model_validate_json(json_candidate)
-            except Exception:
+            except Exception:  # noqa: S110, BLE001 - intentional: fall through to text parsing
                 pass
         return _parse_text_response(cleaned)
     return AgentAnswer.model_validate(final_output)
@@ -885,10 +887,7 @@ def _needs_context_clarification(user_input: str) -> bool:
         "这个问题现在进度如何",
         "这个问题进度如何",
     )
-    if any(term in lowered for term in context_poor_terms):
-        return True
-
-    return False
+    return any(term in lowered for term in context_poor_terms)
 
 
 def _looks_like_kb_policy_query(user_input: str) -> bool:
@@ -959,7 +958,7 @@ def main() -> None:
         print(f"[ERROR] {exc}")
         print("[HINT] Set LLM_API_KEY in your environment or local .env file before running the agent.")
         sys.exit(1)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - CLI entrypoint: report any runtime failure
         print(f"[ERROR] Agent run failed: {exc}")
         sys.exit(1)
 

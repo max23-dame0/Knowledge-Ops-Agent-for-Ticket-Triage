@@ -6,14 +6,18 @@ import json
 from functools import lru_cache
 from pathlib import Path
 
-import faiss
-import numpy as np
-from sentence_transformers import SentenceTransformer
+# Heavy dependencies (faiss / numpy / sentence-transformers) are imported
+# lazily inside the functions below. This keeps the import chain light so
+# agent routing logic can be imported and unit-tested without the RAG stack.
+
+DEFAULT_MODEL_NAME = "all-MiniLM-L6-v2"
 
 
 @lru_cache(maxsize=1)
-def _get_embedding_model(model_name: str) -> SentenceTransformer:
+def _get_embedding_model(model_name: str):
     """Load and cache the sentence-transformers model for repeated local queries."""
+    from sentence_transformers import SentenceTransformer
+
     return SentenceTransformer(model_name)
 
 
@@ -22,10 +26,13 @@ def retrieve_kb(
     top_k: int = 3,
     index_path: str = "data/index/kb_index.faiss",
     metadata_path: str = "data/index/kb_metadata.json",
-    model_name: str = "all-MiniLM-L6-v2",
+    model_name: str = DEFAULT_MODEL_NAME,
     passage_max_chars: int = 280,
 ) -> list[dict[str, object]]:
     """Retrieve the most relevant knowledge base passages for a query."""
+    import faiss
+    import numpy as np
+
     index_file = Path(index_path)
     metadata_file = Path(metadata_path)
 
