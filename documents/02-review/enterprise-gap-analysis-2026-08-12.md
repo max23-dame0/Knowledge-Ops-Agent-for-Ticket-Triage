@@ -153,3 +153,20 @@
 **验证**：ruff 0 错误；pytest 158 passed / 2 skipped（faiss 重依赖模块，CI 装全依赖后真跑）；git 工作区除上述 commit 外无遗留改动。
 
 **遗留（非代码可解）**：① 部署验证（Docker/K8s）需真实环境执行；② faiss/sentence-transformers 单测需 CI 全依赖验证；③ 多实例部署时限流需升级 Redis；④ 生产告警需对接监控平台。
+
+---
+
+## 5. 端到端验证闭环（2026-08-12 补充）
+
+| 检查项 | 结果 |
+|--------|------|
+| 依赖安装（faiss-cpu 1.15 / sentence-transformers / numpy） | ✅ 本地 .venv 齐备 |
+| pytest 全量 | ✅ **164 passed / 0 skipped**（原 2 个 skipped 的 faiss 模块用例真跑通过） |
+| HNSW 索引重建 | ✅ 19 chunks，index_type=hnsw |
+| 混合检索冒烟 | ✅ vpn→vpn_login(0.69)、退款→refund_policy(0.64)、发票→invoice_request(0.51)，低置信标记正常 |
+| LLM regression（DeepSeek 端点，参考 ravenswood-bluff .env） | ✅ 11/11 100% |
+| LLM offline 评估（66 用例含 6 对抗） | ✅ route 98.5% / tool 98.5% / clarification 98.5% / grounding 100% / refusal 98.5% |
+| 对抗用例有效性 | ✅ 修复 E061-E066 乱码后全部正确路由 refuse（原 git 版本即含乱码，PowerShell 追加编码问题） |
+| 已知限制 | escalation 边界用例（E035 类）仍偶发敏感，属 README 已声明的路线边界问题 |
+
+**教训**：PowerShell `Add-Content -Encoding UTF8` 追加中文到既有 UTF-8 文件会产生乱码且列错位；数据文件修改必须用 Python（显式 utf-8-sig），且提交前做程序化校验。

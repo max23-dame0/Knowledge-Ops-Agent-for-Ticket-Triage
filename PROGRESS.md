@@ -20,12 +20,13 @@
 
 | 检查项 | 状态 |
 |------|------|
-| `pytest tests/`（158 passed / 2 skipped，skipped=faiss 重依赖待 CI 全依赖验证） | ✅ 已验证（2026-08-12） |
+| `pytest tests/`（**164 passed / 0 skipped**，faiss 重依赖已装真跑） | ✅ 已验证（2026-08-12） |
 | `ruff check src tests app.py` | ✅ 0 错误（2026-08-12） |
-| `.venv\Scripts\python.exe -m src.rag.build_index`（HNSW 默认） | ⬜ 待执行（索引升级后需重建验证） |
-| `... run_evals --mode regression`（基线：11+ 用例，需 LLM 环境） | ⬜ 未验证（需 `.env` + 模型端点） |
+| `.venv\Scripts\python.exe -m src.rag.build_index`（HNSW 默认，19 chunks） | ✅ 已重建 + 检索冒烟通过（vpn→vpn_login 0.69 等） |
+| `... run_evals --mode regression`（11 用例，DeepSeek 端点） | ✅ 11/11 100%（2026-08-12） |
+| `... run_evals --mode offline`（66 用例含 6 对抗） | ✅ route 98.5% / grounding 100% / refusal 98.5%（2026-08-12） |
 | FastAPI 冒烟（/healthz、/agent/ask） | ✅ TestClient 已验证；真实部署待执行 |
-| git status / 未提交清单 | 🟡 待提交：差距分析文档更新 + PROGRESS 更新 |
+| git status / 未提交清单 | ✅ 已提交（e5aee58 起工作区干净） |
 | 当前 blocker | 无 |
 
 ## 未提交改动清单（与 git 强一致）
@@ -57,5 +58,6 @@
 
 | 日期 | 做了什么（一行） | 验证 | 下一步 | 日志 |
 |------|---------|:--:|------|
-| 2026-08-12 | 修复 12 项企业就绪度差距（Phase A/B/C 全部完成）：密钥清理、158 单测、CI、结构化日志、Repository、熔断缓存、FastAPI+认证限流、Docker/K8s、HNSW+BM25、注入防护+对抗用例+人工确认闸、审计轨迹、多轮会话+反馈 | ruff 0 错误 / pytest 158 passed / 13 commits | CI 全依赖跑 faiss 单测；真实环境部署验证 | `.codebuddy/memory/2026-08-12.md` |
+| 2026-08-12 | 端到端验证闭环：安装 faiss 全依赖 → pytest 164/164 全绿 → HNSW 索引重建 + 混合检索冒烟 → DeepSeek 端点 regression 11/11 → offline 66 用例评估（route 98.5%/grounding 100%/refusal 98.5%）→ 修复 E061-E066 乱码（原 git 版本即乱码） | 全链路 ✅ | Docker/K8s 真实部署验证 | `.codebuddy/memory/2026-08-12.md` |
+| 2026-08-12 | 修复 12 项企业就绪度差距（Phase A/B/C 全部完成）：密钥清理、158 单测、CI、结构化日志、Repository、熔断缓存、FastAPI+认证限流、Docker/K8s、HNSW+BM25、注入防护+对抗用例+人工确认闸、审计轨迹、多轮会话+反馈 | ruff 0 错误 / pytest 158 passed / 13 commits | 已进入验证闭环 | `.codebuddy/memory/2026-08-12.md` |
 | 2026-08-12 | 首次搭建 harness：生成 AGENTS.md / MEMORY.md / PROGRESS.md / DECISIONS.md / rules/（6 个）/ harness 辅助文件（3 个） | 生成完整性检查 | 已 commit（3a545fa） | `.codebuddy/memory/2026-08-12.md` |
