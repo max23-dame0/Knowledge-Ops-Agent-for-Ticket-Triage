@@ -74,4 +74,4 @@ class TestClarification:
         assert response is None
         response = _maybe_clarify("帮我查一下工单状态")
         assert response is not None
-        assert "ticket" in response.clarification_question.lower()
+        assert "工单" in response.clarification_question

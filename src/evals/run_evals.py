@@ -131,7 +131,7 @@ def run_llm_smoke_test(
         )
     except Exception as exc:  # noqa: BLE001 - smoke/eval tolerance by design: report and continue
         print(f"[FAIL] Config issue: {exc}")
-        print("[HINT] Check LLM_API_KEY, LLM_MODEL_ID, and optional LLM_BASE_URL in your environment or .env file.")
+        print("[HINT] 请检查环境变量或 .env 中的 LLM_API_KEY、LLM_MODEL_ID 与可选的 LLM_BASE_URL。")
         return 1
 
     try:

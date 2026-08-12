@@ -747,11 +747,11 @@ def _maybe_clarify(user_input: str) -> AgentAnswer | None:
     """Return a clarification question for vague KB, ticket, or escalation requests."""
     if not user_input:
         return AgentAnswer(
-            answer="Need more information before I can help.",
-            conclusion="Need more information before I can help.",
+            answer="我需要更多信息才能帮你处理。",
+            conclusion="我需要更多信息才能帮你处理。",
             evidence=[],
-            next_action=["Please describe the issue, provide a ticket_id, or explain whether you need escalation advice."],
-            next_actions=["Please describe the issue, provide a ticket_id, or explain whether you need escalation advice."],
+            next_action=["请描述问题内容、提供工单号，或说明是否需要升级建议。"],
+            next_actions=["请描述问题内容、提供工单号，或说明是否需要升级建议。"],
             human_handoff=False,
             should_handoff=False,
             confidence=0.2,
@@ -760,7 +760,7 @@ def _maybe_clarify(user_input: str) -> AgentAnswer | None:
             clarified=True,
             refused=False,
             needs_clarification=True,
-            clarification_question="Please describe the issue, provide a ticket_id, or explain whether you need escalation advice.",
+            clarification_question="请描述问题内容、提供工单号，或说明是否需要升级建议。",
         )
 
     if _has_strong_escalation_signal(user_input):
@@ -771,11 +771,11 @@ def _maybe_clarify(user_input: str) -> AgentAnswer | None:
 
     if _looks_like_context_poor_kb_query(user_input):
         return AgentAnswer(
-            answer="Need more information before I can help.",
-            conclusion="Need more information before I can help.",
+            answer="我需要更多信息才能帮你处理。",
+            conclusion="我需要更多信息才能帮你处理。",
             evidence=[],
-            next_action=["Please add the specific symptom, action, or expected outcome."],
-            next_actions=["Please add the specific symptom, action, or expected outcome."],
+            next_action=["请补充具体症状、操作步骤或期望结果。"],
+            next_actions=["请补充具体症状、操作步骤或期望结果。"],
             human_handoff=False,
             should_handoff=False,
             confidence=0.3,
@@ -784,16 +784,16 @@ def _maybe_clarify(user_input: str) -> AgentAnswer | None:
             clarified=True,
             refused=False,
             needs_clarification=True,
-            clarification_question="Please add the specific symptom, action, or expected outcome.",
+            clarification_question="请补充具体症状、操作步骤或期望结果。",
         )
 
     if _looks_like_ticket_query(user_input) and not _extract_ticket_id(user_input):
         return AgentAnswer(
-            answer="Need more information before I can help.",
-            conclusion="Need more information before I can help.",
+            answer="我需要更多信息才能帮你处理。",
+            conclusion="我需要更多信息才能帮你处理。",
             evidence=[],
-            next_action=["Please provide ticket_id, for example TKT-1004."],
-            next_actions=["Please provide ticket_id, for example TKT-1004."],
+            next_action=["请提供工单号，例如 TKT-1004。"],
+            next_actions=["请提供工单号，例如 TKT-1004。"],
             human_handoff=False,
             should_handoff=False,
             confidence=0.3,
@@ -802,17 +802,17 @@ def _maybe_clarify(user_input: str) -> AgentAnswer | None:
             clarified=True,
             refused=False,
             needs_clarification=True,
-            clarification_question="Please provide ticket_id.",
+            clarification_question="请提供工单号，例如 TKT-1004。",
         )
 
     if any(keyword in user_input for keyword in KB_KEYWORDS):
         if _looks_like_context_poor_kb_query(user_input):
             return AgentAnswer(
-                answer="Need more information before I can help.",
-                conclusion="Need more information before I can help.",
+                answer="我需要更多信息才能帮你处理。",
+                conclusion="我需要更多信息才能帮你处理。",
                 evidence=[],
-                next_action=["Please add the specific symptom, action, or expected outcome."],
-                next_actions=["Please add the specific symptom, action, or expected outcome."],
+                next_action=["请补充具体症状、操作步骤或期望结果。"],
+                next_actions=["请补充具体症状、操作步骤或期望结果。"],
                 human_handoff=False,
                 should_handoff=False,
                 confidence=0.3,
@@ -821,17 +821,17 @@ def _maybe_clarify(user_input: str) -> AgentAnswer | None:
                 clarified=True,
                 refused=False,
                 needs_clarification=True,
-                clarification_question="Please add the specific symptom, action, or expected outcome.",
+                clarification_question="请补充具体症状、操作步骤或期望结果。",
             )
         return None
 
     if _needs_context_clarification(user_input):
         return AgentAnswer(
-            answer="Need more information before I can help.",
-            conclusion="Need more information before I can help.",
+            answer="我需要更多信息才能帮你处理。",
+            conclusion="我需要更多信息才能帮你处理。",
             evidence=[],
-            next_action=["Please add the concrete symptom, affected object, impact scope, or ticket_id."],
-            next_actions=["Please add the concrete symptom, affected object, impact scope, or ticket_id."],
+            next_action=["请补充具体症状、影响对象、影响范围或工单号。"],
+            next_actions=["请补充具体症状、影响对象、影响范围或工单号。"],
             human_handoff=False,
             should_handoff=False,
             confidence=0.3,
@@ -840,16 +840,16 @@ def _maybe_clarify(user_input: str) -> AgentAnswer | None:
             clarified=True,
             refused=False,
             needs_clarification=True,
-            clarification_question="Please add the concrete symptom, affected object, impact scope, or ticket_id.",
+            clarification_question="请补充具体症状、影响对象、影响范围或工单号。",
         )
 
     if _looks_like_escalation_query(user_input) and len(user_input.strip()) < 12 and not _has_strong_escalation_signal(user_input):
         return AgentAnswer(
-            answer="Need more information before I can help.",
-            conclusion="Need more information before I can help.",
+            answer="我需要更多信息才能帮你处理。",
+            conclusion="我需要更多信息才能帮你处理。",
             evidence=[],
-            next_action=["Please add issue summary, impact scope, or evidence before I judge whether escalation is needed."],
-            next_actions=["Please add issue summary, impact scope, or evidence before I judge whether escalation is needed."],
+            next_action=["请补充问题摘要、影响范围或证据，我再判断是否需要升级。"],
+            next_actions=["请补充问题摘要、影响范围或证据，我再判断是否需要升级。"],
             human_handoff=False,
             should_handoff=False,
             confidence=0.3,
@@ -858,7 +858,7 @@ def _maybe_clarify(user_input: str) -> AgentAnswer | None:
             clarified=True,
             refused=False,
             needs_clarification=True,
-            clarification_question="Please add issue summary, impact scope, or evidence.",
+            clarification_question="请补充问题摘要、影响范围或证据。",
         )
 
     vague_markers = ("怎么办", "坏了", "有问题", "不行", "异常")
@@ -867,11 +867,11 @@ def _maybe_clarify(user_input: str) -> AgentAnswer | None:
         if has_kb_topic:
             return None
         return AgentAnswer(
-            answer="Need more information before I can help.",
-            conclusion="Need more information before I can help.",
+            answer="我需要更多信息才能帮你处理。",
+            conclusion="我需要更多信息才能帮你处理。",
             evidence=[],
-            next_action=["Please clarify whether this is a KB question, a ticket query, or an escalation request, and add keywords or ticket_id."],
-            next_actions=["Please clarify whether this is a KB question, a ticket query, or an escalation request, and add keywords or ticket_id."],
+            next_action=["请说明这是知识库问题、工单查询还是升级建议，并补充关键词或工单号。"],
+            next_actions=["请说明这是知识库问题、工单查询还是升级建议，并补充关键词或工单号。"],
             human_handoff=False,
             should_handoff=False,
             confidence=0.25,
@@ -880,7 +880,7 @@ def _maybe_clarify(user_input: str) -> AgentAnswer | None:
             clarified=True,
             refused=False,
             needs_clarification=True,
-            clarification_question="Please clarify whether this is a KB question, a ticket query, or an escalation request, and add keywords or ticket_id.",
+            clarification_question="请说明这是知识库问题、工单查询还是升级建议，并补充关键词或工单号。",
         )
 
     return None
@@ -1034,14 +1034,14 @@ def main() -> None:
     user_input = " ".join(args.question).strip() or input("请输入问题: ").strip()
 
     if not user_input:
-        print("[ERROR] Please provide a question, for example: VPN 登录失败提示 token 过期怎么办")
+        print("[ERROR] 请提供一个问题，例如：VPN 登录失败提示 token 过期怎么办")
         sys.exit(1)
 
     try:
         response = run_agent(user_input)
     except ValueError as exc:
         print(f"[ERROR] {exc}")
-        print("[HINT] Set LLM_API_KEY in your environment or local .env file before running the agent.")
+        print("[HINT] 请在环境变量或本地 .env 文件中配置 LLM_API_KEY 后再运行 agent。")
         sys.exit(1)
     except Exception as exc:  # noqa: BLE001 - CLI entrypoint: report any runtime failure
         print(f"[ERROR] Agent run failed: {exc}")
