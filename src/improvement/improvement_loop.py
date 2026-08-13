@@ -71,9 +71,8 @@ def collect_reflect_store(
 
 
 def mark_rejected(store: ExperienceStore, entry: ExperienceEntry) -> None:
-    """Persist a gate-rejected entry as a downgraded `rejected` variant."""
-    rejected = entry.model_copy(update={"source": "rejected"})
-    store.add(rejected)
+    """Downgrade a gate-rejected entry to the `rejected` source in place."""
+    store.downgrade(entry)
     logger.info("improvement_loop | entry_rejected | situation=%s", entry.situation[:40])
 
 

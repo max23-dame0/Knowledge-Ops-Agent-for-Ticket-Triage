@@ -78,6 +78,25 @@ class ExperienceStore:
             logger.info("experience_store_add | situation=%s | total=%d", entry.situation[:40], len(entries))
             return True
 
+    def downgrade(self, entry: ExperienceEntry) -> bool:
+        """Flip an existing entry's source to `rejected` in place.
+
+        Returns True when a matching entry was found and downgraded. The
+        dedupe signature ignores `source`, so a rejected copy cannot be
+        appended separately; in-place downgrade avoids that trap.
+        """
+        with self._lock:
+            entries = self._load_unsafe()
+            signature = _signature(entry)
+            changed = False
+            for index, existing in enumerate(entries):
+                if _signature(existing) == signature and existing.source != "rejected":
+                    entries[index] = existing.model_copy(update={"source": "rejected"})
+                    changed = True
+            if changed:
+                self._persist_unsafe(entries)
+            return changed
+
     def search(self, query: str, top_k: int = 3) -> list[ExperienceEntry]:
         """Return entries ranked by keyword overlap with the query."""
         query_tokens = set(tokenize(query))

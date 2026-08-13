@@ -152,9 +152,10 @@ def test_collect_reflect_store_skips_duplicates(tmp_path: Path) -> None:
 
 
 def test_mark_rejected_renames_and_downgrades(tmp_path: Path) -> None:
-    """Rejected entries persist as rejected variants, still deduped later."""
+    """An existing entry is downgraded in place to the rejected source."""
     store = ExperienceStore(path=str(tmp_path / "exp.jsonl"))
     entry = ExperienceEntry(situation="s", action="a", lesson="l")
+    store.add(entry)
 
     mark_rejected(store, entry)
 
