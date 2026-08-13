@@ -18,6 +18,14 @@ class KBSearchResult(BaseModel):
         description="True when the fused score is below the relevance threshold; "
         "the answer should be treated as weakly grounded.",
     )
+    rerank_score: float | None = Field(
+        default=None,
+        description="CrossEncoder rerank score normalized to 0-1; None when rerank fell back.",
+    )
+    strong_evidence: bool = Field(
+        default=False,
+        description="True when the rerank score clears the relevance gate (C2).",
+    )
 
 
 class KBSearchResponse(BaseModel):
