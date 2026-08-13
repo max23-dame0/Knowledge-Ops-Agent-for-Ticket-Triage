@@ -28,6 +28,13 @@ from src.utils.resilience import CircuitBreaker, ResponseCache
 logger = get_logger("knowledge_ops.agent")
 _CURRENT_TOOL_CALLS: list[dict[str, Any]] = []
 
+
+def _experience_injection_enabled() -> bool:
+    """Return True when the A4 experience injection toggle is on (env-controlled)."""
+    from src.improvement.injection import injection_enabled
+
+    return injection_enabled()
+
 # Endpoint resilience: fail fast when the model endpoint is unhealthy, and
 # serve repeated identical questions from the bounded cache to save tokens.
 _circuit_breaker = CircuitBreaker(failure_threshold=3, cooldown_seconds=30.0)
@@ -422,6 +429,19 @@ def _run_agent_inner(user_input: str) -> AgentAnswer:
             "Only use search_kb or get_ticket_status if escalation facts are clearly missing.\n"
             f"User question: {normalized}"
         )
+
+    # A4 experience injection (disabled by default): append pattern-level
+    # experience as prompt context only; routing stays with main_agent (D004).
+    if _experience_injection_enabled():
+        from src.tools.experience_retrieval import retrieve_experience
+
+        experiences = retrieve_experience(query=normalized, top_k=3)
+        if experiences:
+            from src.improvement.injection import build_experience_injection
+
+            injection = build_experience_injection(experiences)
+            agent_input = f"{agent_input}\n\n{injection}"
+            logger.info("experience_injection | entries=%d", len(experiences))
 
     if not _circuit_breaker.allow_request():
         logger.warning("circuit_open=true | failing fast for question=%s", normalized)
