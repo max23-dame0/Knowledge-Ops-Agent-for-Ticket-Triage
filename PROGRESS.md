@@ -43,6 +43,7 @@
 |------|:--:|------|------|
 | Harness 文件（AGENTS.md / PROGRESS.md / DECISIONS.md / .codebuddy/） | ✅ 已提交（3a545fa） | 已完成 | - |
 | 企业就绪度差距分析文档（含修复完成记录）+ PROGRESS 更新 | 🟡 已更新待提交 | 本轮收尾 commit | 1-4 |
+| 文档治理：README/README_CN 精简为入口（~90 行）+ documents/ 语料体系（架构/工具/评测/验收清单/演示场景 + 五要素索引）+ 02-review 补 frontmatter + 引用修复 | 🟡 已更新待提交 | 本轮收尾 commit | 文档治理 |
 
 ## 整体进度
 
@@ -53,7 +54,7 @@
 | P2 | RAG 管道（chunking + embeddings + FAISS） | ✅ | 2026-03 |
 | P3 | 工具层（search_kb / get_ticket_status / create_escalation_draft） | ✅ | 2026-03 |
 | P4 | 评估流水线（offline + regression + error_analysis） | ✅ | 2026-03（commit 301e51d） |
-| P5 | 文档（README / README_CN / 验收清单） | ✅ | 2026-08（commit 0c254fa） |
+| P5 | 文档（README 精简入口 + documents/ 语料体系 + 验收清单） | ✅ | 2026-08（commit 0c254fa） |
 | P6 | Harness 环境搭建 | 🟡 待提交 | 2026-08-12 |
 
 ## 阻塞项
@@ -64,6 +65,7 @@
 
 | 日期 | 做了什么（一行） | 验证 | 下一步 | 日志 |
 |------|---------|:--:|------|
+| 2026-08-13 | 文档治理：README×2 从 640/623 行瘦身为 ~90 行精简入口，详细内容拆分至 documents/ 语料（00-architecture×4 + 04-reports×1 + 五要素索引），02-review×5 补 frontmatter，AGENTS/DECISIONS/PROGRESS 引用修复，manual_review_checklist 迁入 documents/ | 链接全部有效、无残留引用 | 待 commit | `.codebuddy/memory/2026-08-13.md` |
 | 2026-08-13 | 本地端点工具型评测：反代支持 tools 后跑 regression 11 条 + offline 66 条，报告落盘 documents/02-review/local-endpoint-tool-eval-report-2026-08-13.md | regression 11/11（100%）、offline route 97.0%/grounding 100%/refusal 98.5% | E009/E021/E049 三点可选优化 | `.codebuddy/memory/2026-08-13.md` |
 | 2026-08-12 | 外部数据集评测闭环：下载 deepset/prompt-injections + clinc_oos → 评测脚本 → 初测（注入拒答 80%、幻觉敞口 96.7%）→ P1 加固（fallback clarify + 多语种注入正则）→ 复测（注入拒答 100%、幻觉风险 0、规则层拦截 3.7x） | pytest 171 passed / 评测全指标改善 | P2 建议可选；Docker/K8s 部署验证 | `.codebuddy/memory/2026-08-12.md` |
 | 2026-08-12 | 端到端验证闭环：安装 faiss 全依赖 → pytest 164/164 全绿 → HNSW 索引重建 + 混合检索冒烟 → DeepSeek 端点 regression 11/11 → offline 66 用例评估（route 98.5%/grounding 100%/refusal 98.5%）→ 修复 E061-E066 乱码（原 git 版本即乱码） | 全链路 ✅ | 已完成 | `.codebuddy/memory/2026-08-12.md` |

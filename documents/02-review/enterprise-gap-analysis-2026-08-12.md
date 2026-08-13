@@ -1,3 +1,16 @@
+---
+doc_id: REV-001
+title: "企业应用就绪度差距分析"
+category: "review"
+role: "[Delta]"
+status: "published"
+date: "2026-08-12"
+author: "knowledge-ops-agent 团队"
+tags: ["gap-analysis", "enterprise-readiness", "audit", "security"]
+related:
+  - "external-benchmark-report-2026-08-12.md"
+---
+
 # 企业应用就绪度差距分析 — knowledge-ops-agent
 
 > **日期**：2026-08-12

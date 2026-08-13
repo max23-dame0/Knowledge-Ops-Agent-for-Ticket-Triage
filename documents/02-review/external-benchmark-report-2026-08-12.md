@@ -1,3 +1,16 @@
+---
+doc_id: REV-002
+title: "外部数据集评测报告"
+category: "review"
+role: "[Delta]"
+status: "published"
+date: "2026-08-12"
+author: "knowledge-ops-agent 团队"
+tags: ["external-benchmark", "prompt-injections", "clinc-oos", "evaluation"]
+related:
+  - "external-benchmark-total-report-2026-08-13.md"
+---
+
 # 外部数据集评测报告 — knowledge-ops-agent
 
 > **日期**：2026-08-12

@@ -26,7 +26,7 @@
 
 ## D003: LLM 接入采用 OpenAI 兼容端点 + 可配置模型
 
-- **日期**：2026-08-12（来源：README §7 + `.env.example` 归纳）
+- **日期**：2026-08-12（来源：`documents/00-architecture/architecture.md` + `.env.example` 归纳）
 - **决策**：通过 `OpenAIChatCompletionsModel` 调用第三方 OpenAI 兼容端点（当前 MiniMax M2.7，`LLM_BASE_URL`/`LLM_MODEL_ID`/`LLM_API_KEY` 全部走 `.env`）
 - **原因**：README 明确运行时期望 OpenAI 兼容 chat-completions 接口；模型/端点可配置便于切换供应商
 - **否决方案**：硬编码官方 OpenAI SDK 专用调用（无法兼容第三方提供商）
@@ -35,7 +35,7 @@
 
 ## D004: 单决策者架构 — main_agent 为唯一顶层决策 owner
 
-- **日期**：2026-08-12（来源：README §4 归纳）
+- **日期**：2026-08-12（来源：`documents/00-architecture/architecture.md` 归纳）
 - **决策**：`main_agent` 拥有路由（kb/ticket/escalation/clarify/refuse）、澄清、拒答、工具选择的全部顶层决策权；`retrieval_agent` 仅为 KB 证据规范化层，不参与路由
 - **原因**：本项目定位"单决策 agent + 受控子模块"，不是自由多 agent 交接系统；保证行为可检视、可评估
 - **否决方案**：多 agent 自由交接架构（复杂、难调试、评估不稳定）
@@ -44,7 +44,7 @@
 
 ## D005: 评估采用规则式指标（非 LLM judge）
 
-- **日期**：2026-08-12（来源：README §9 归纳）
+- **日期**：2026-08-12（来源：`documents/00-architecture/evaluation.md` 归纳）
 - **决策**：离线评估用轻量规则指标（route_accuracy / tool_use_accuracy / clarification_accuracy / grounding_presence / refusal_accuracy），不做语义打分
 - **原因**：项目是行为评估（路由/工具/澄清/拒答/证据），规则式足以支撑回归与迭代，成本低且稳定
 - **否决方案**：LLM judge 语义评分（成本高、不稳定，demo 阶段收益低）
@@ -53,7 +53,7 @@
 
 ## D006: OpenAI Agents SDK tracing 运行时关闭
 
-- **日期**：2026-08-12（来源：README §4.7 归纳）
+- **日期**：2026-08-12（来源：`documents/00-architecture/architecture.md` §九 归纳）
 - **决策**：`RunConfig(tracing_disabled=True)`，运行时不启用 SDK tracing，改用项目自带 `src/utils/logging.py` 的 `key=value` 日志
 - **原因**：兼容非 OpenAI 提供商；自带日志已覆盖 user_input/route_hints/tool_calls/response_summary 全链路
 - **否决方案**：依赖 SDK tracing（第三方提供商下不稳定）

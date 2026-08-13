@@ -1,3 +1,17 @@
+---
+doc_id: REV-003
+title: "外部数据集评测总报告"
+category: "review"
+role: "[Delta]"
+status: "published"
+date: "2026-08-13"
+author: "knowledge-ops-agent 团队"
+tags: ["external-benchmark", "evaluation", "summary", "prompt-injections"]
+related:
+  - "external-benchmark-report-2026-08-12.md"
+  - "local-endpoint-tool-eval-report-2026-08-13.md"
+---
+
 # 外部数据集评测总报告 — knowledge-ops-agent
 
 > **版本**：v1.0（合并 2026-08-12 外部评测 + 2026-08-13 本地端点工具型评测）

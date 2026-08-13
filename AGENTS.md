@@ -48,7 +48,7 @@ streamlit run app.py                                    # 启动 Streamlit UI
 | 6 | **部署后验证闭环**：已部署目标环境并通过冒烟/E2E，或显式记录「未验证原因 + 预计验证时间」 | 部署/接口验证 | ⬜ |
 
 > 第 6 项杜绝"本地 ✅ 但生产未验证"的早停：凡只标本地通过、未走部署验证的任务，状态不得写 ✅。
-> 本项目的"部署"特指 Streamlit UI 冒烟验收（见 `manual_review_checklist.md`）。
+> 本项目的"部署"特指 Streamlit UI 冒烟验收（见 `documents/00-architecture/manual-review-checklist.md`）。
 
 ## 项目结构
 
@@ -61,13 +61,14 @@ knowledge-ops-agent/
 │   ├── eval_set.csv           # 离线评估集
 │   ├── index/                 # FAISS 索引产物（kb_index.faiss + kb_metadata.json）
 │   └── eval_results/          # 评估输出（.gitignore 排除）
+├── documents/                 # 文档语料（统一索引见 documents/README.md）
 ├── src/
 │   ├── agents/                # main_agent（决策 owner）+ retrieval_agent（证据层）+ guardrails
 │   ├── evals/                 # run_evals / metrics / error_analysis
 │   ├── rag/                   # chunking / build_index / retrieve
 │   ├── tools/                 # kb_search / ticket_tools / escalation_tools
 │   └── utils/                 # config（.env 加载）/ logging
-└── manual_review_checklist.md # UI 手动验收清单
+└── manual_review_checklist.md → 已迁移至 documents/00-architecture/manual-review-checklist.md
 ```
 
 ## 分层规则加载
@@ -110,8 +111,9 @@ knowledge-ops-agent/
 
 | 文档 | 用途 | 何时读 |
 |------|------|--------|
-| `README.md` / `README_CN.md` | 架构全貌、运行步骤、demo 场景、评估说明 | 新会话初期 |
-| `manual_review_checklist.md` | Streamlit UI 手动验收清单（冒烟测试步骤） | 验收/部署验证时 |
+| `README.md` / `README_CN.md` | 精简入口：项目概览 + 快速开始 + 文档索引 | 新会话初期 |
+| `documents/README.md` | 文档语料统一索引（场景查找表 + 分类索引） | 需要查详细文档时 |
+| `documents/00-architecture/manual-review-checklist.md` | Streamlit UI 手动验收清单（冒烟测试步骤） | 验收/部署验证时 |
 | `.codebuddy/harness/tech-traps.md` | 冷记忆：技术陷阱与已知限制 | 遇到对应技术时 |
 | `.codebuddy/harness/session-handoff.md` | 会话交接 | 上班/下班 |
 | `.codebuddy/harness/context-budget.md` | 上下文预算策略 | 上下文紧张时 |
