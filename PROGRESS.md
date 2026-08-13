@@ -91,6 +91,7 @@
 | 日期 | 做了什么（一行） | 验证 | 下一步 | 日志 |
 |------|---------|:--:|------|
 | 2026-08-13 | Embedding 切换为 SiliconFlow API（最终 Qwen/Qwen3-VL-Embedding-8B，4096 维；先 bge-m3 后改 Qwen3-VL）：新增 src/rag/embedding.py（API 客户端 + 本地兜底 + L2 归一化）、config.py 加 EmbeddingSettings、kb_repository/build_index/retrieve 接入统一接口、.env/.env.example 配置；重建 HNSW 索引（19 chunks） | API 连通 ✅、检索冒烟 vpn→0.64 strong、pytest 227 passed | 待提交（登记未提交清单） | `.codebuddy/memory/2026-08-13.md` |
+| 2026-08-13 | PLN-001 交付：自我改进引擎 A1-A6 全链路 + RAG 深化 C1-C4（CrossEncoder rerank/相关性门控/查询改写/检索评测）+ 评测升级 D1（semantic grader），ADR D007，9 个 commit | pytest 233 passed（+69）/ ruff 0 / rerank recall@1 0.90→1.00、MRR 0.95→1.00 | D2 需用户标注；A6 真实端到端待 LLM 端点 | `.codebuddy/memory/2026-08-13.md` |
 | 2026-08-13 | 文档治理：README×2 从 640/623 行瘦身为 ~90 行精简入口，详细内容拆分至 documents/ 语料（00-architecture×4 + 04-reports×1 + 五要素索引），02-review×5 补 frontmatter，AGENTS/DECISIONS/PROGRESS 引用修复，manual_review_checklist 迁入 documents/ | 链接全部有效、无残留引用 | 已提交（3763dc1）并推送 origin/main（3a545fa..cc3c3fb） | `.codebuddy/memory/2026-08-13.md` |
 | 2026-08-13 | 本地端点工具型评测：反代支持 tools 后跑 regression 11 条 + offline 66 条，报告落盘 documents/02-review/local-endpoint-tool-eval-report-2026-08-13.md | regression 11/11（100%）、offline route 97.0%/grounding 100%/refusal 98.5% | E009/E021/E049 三点可选优化 | `.codebuddy/memory/2026-08-13.md` |
 | 2026-08-12 | 外部数据集评测闭环：下载 deepset/prompt-injections + clinc_oos → 评测脚本 → 初测（注入拒答 80%、幻觉敞口 96.7%）→ P1 加固（fallback clarify + 多语种注入正则）→ 复测（注入拒答 100%、幻觉风险 0、规则层拦截 3.7x） | pytest 171 passed / 评测全指标改善 | P2 建议可选；Docker/K8s 部署验证 | `.codebuddy/memory/2026-08-12.md` |
