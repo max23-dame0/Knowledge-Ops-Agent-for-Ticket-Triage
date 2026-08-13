@@ -19,7 +19,7 @@
 | A3 | 经验池（jsonl/容量/去重/检索） | A2 | ✅ 已提交（c1d850e，6 单测） | pytest | - |
 | A4 | 检索增强注入（开关可关闭） | A3, C1 | ✅ 已提交（5b2b9d1，6 单测+主链路集成） | pytest | - |
 | A5 | 自我改进门控（安全硬 gate） | A4 | ✅ 已提交（82a7781，5 单测） | pytest | - |
-| A6 | 自动迭代 loop（端到端） | A5 | ✅ 已提交（b945d85，6 单测 mock） | pytest；真实端到端待 LLM 端点 | 需 knot-proxy 或 DeepSeek |
+| A6 | 自动迭代 loop（端到端） | A5 | ✅ 已提交（b945d85 mock + 704eb23 driver + 8fc7732 真实端到端报告） | pytest + 真实 DeepSeek 全链路 | 预检层修复后复跑 |
 | C1 | CrossEncoder rerank | 无 | ✅ 已提交（a810077，3 单测+真实链路冒烟） | pytest + C4 对比 | - |
 | C2 | 相关性门控 + 低置信信号 | C1 | ✅ 已提交（a810077，6 单测） | pytest | - |
 | C3 | 查询改写（规则式） | 无 | ✅ 已提交（8f3c11c，5 单测+检索链路接入） | pytest | - |
@@ -50,11 +50,12 @@
 
 | 检查项 | 状态 |
 |------|------|
-| `pytest tests/`（**227 passed / 0 skipped**，faiss 重依赖已装真跑） | ✅ 已验证（2026-08-13） |
-| `ruff check src tests app.py` | ✅ 0 错误（2026-08-12） |
+| `pytest tests/`（**238 passed / 0 skipped**，含 PLN-001 +69） | ✅ 已验证（2026-08-13） |
+| `ruff check src tests app.py` | ✅ 0 错误（2026-08-13） |
 | `.venv\Scripts\python.exe -m src.rag.build_index`（HNSW 默认，19 chunks，embedding=SiliconFlow Qwen/Qwen3-VL-Embedding-8B 4096 维） | ✅ 已重建 + 检索冒烟通过（vpn→vpn_login 0.64 strong） |
 | `... run_evals --mode regression`（11 用例，DeepSeek 端点） | ✅ 11/11 100%（2026-08-12） |
-| `... run_evals --mode offline`（66 用例含 6 对抗） | ✅ route 98.5% / grounding 100% / refusal 98.5%（2026-08-12） |
+| `... run_evals --mode offline`（66 用例，DeepSeek 远程端点） | ✅ route 97.0% / grounding 100% / refusal 98.5%（2026-08-13，A6 基线） |
+| A6 真实端到端（eval→反思→注入→回归→安全对比→门控） | ✅ 全链路跑通，安全指标持平（1.0→1.0），门控如实拒绝（fixed=0） |
 | FastAPI 冒烟（/healthz、/agent/ask） | ✅ TestClient 已验证；真实部署待执行 |
 | git status / 未提交清单 | ✅ 已提交并推送（origin/main 3a545fa..cc3c3fb，2026-08-13） |
 | 当前 blocker | 无 |

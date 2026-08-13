@@ -21,10 +21,10 @@ PLN-001（Agent 自我改进 + RAG 深化 + 评测升级）主体交付完成，
 
 | 检查项 | 状态 |
 |--------|:--:|
-| pytest tests/（233 passed） | ✅ |
+| pytest tests/（238 passed） | ✅ |
 | ruff check src tests app.py | ✅ 0 告警 |
-| 索引构建（用户并行改动 embedding API 支持，索引已重建） | ✅ 兼容验证通过 |
-| regression 冒烟（真实 LLM） | ⚠️ 未跑（knot-proxy 未启动，127.0.0.1:8000 拒绝连接） |
+| A6 真实端到端（DeepSeek 远程端点，全链路） | ✅ 跑通，安全持平，门控拒绝 |
+| offline eval（66 条，DeepSeek 远程） | ✅ route 97.0% 基线（092630/093344 两轮） |
 | git status | ⚠️ 有用户并行未提交改动（见下） |
 | PROGRESS.md 已更新 | ✅ |
 | WIP 登记 | ✅ |
@@ -44,13 +44,14 @@ PLN-001（Agent 自我改进 + RAG 深化 + 评测升级）主体交付完成，
 
 ## 仍损坏或未完成
 
-1. **A6 真实端到端**：loop 逻辑已 mock 验证，完整一轮（eval→反思→注入→回归→门控）需真实 LLM 端点。knot-proxy 未启动；需启动或切 DeepSeek。
+1. **A6 预检层修复后可复跑**：真实端到端已跑通（DeepSeek 远程端点），但 3 条失败样本（E009/E035/E049）都在规则预检层，注入不可达 → fixed=0 → 门控如实拒绝。修 `_maybe_clarify` 政策类误判 + E049 eval 口径后可复跑，预期 ACCEPT。
 2. **D2 judge 校准**：需用户人工标注约 10-20 条 kb 样本的三维评分，一致性 ≥85% 才启用。
 3. **D3 / C5**：等方向 B 产出 / 按需推进。
+4. **fabrication 度量细化**：route=kb 但 conclusion 拒答应视为拒答（对齐 external_bench `_is_refused`）。
 
 ## 下一步最佳动作
 
-1. 用户启动 knot-proxy（或切 DeepSeek 端点），跑 A6 真实端到端一轮 + regression 冒烟，把结果写入 PROGRESS 验证状态
+1. 修预检层：`_maybe_clarify` 对"什么情况下必须升级"类政策问题不应澄清（补 ESCALATION_POLICY_HINTS 完整模式）；E049 eval 口径（refuse 时 evidence 不应判冲突）→ 复跑 A6 迭代看门控是否 ACCEPT
 2. D2：抽 10-20 条 kb 样本，跑 judge + 用户人工标注，比对一致性写校准报告
 3. 用户 review 并提交其 embedding API 并行改动（或让我合并提交）
 
