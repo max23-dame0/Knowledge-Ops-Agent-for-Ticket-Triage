@@ -59,3 +59,21 @@
 - **否决方案**：依赖 SDK tracing（第三方提供商下不稳定）
 - **回退/可逆方案**：tracing 开关是配置项，随时可恢复
 - **约束**：新增关键流程时同步补日志，保持可观测性
+
+## D007: LLM judge 仅评质量维度，不替代行为判定指标
+
+- **日期**：2026-08-13（PLN-001 D 线，对 D005 的修正性补充）
+- **决策**：引入 semantic grader（D1）作为**补充性质量评测**，仅对 kb 路由样本的最终回答做三维评分（正确性/完整性/证据支撑，1-5 分）；route/tool/clarify/refusal/grounding 五项行为指标继续由规则式 metrics（D005）判定，judge 无权改变行为判定结果
+- **原因**：自我改进闭环（A5 门控）需要回答质量的量化信号，但 LLM judge 不稳定、成本高，不能动摇 D005 的确定性回归基线
+- **否决方案**：用 judge 完全替代规则指标（回归基线漂移、成本不可控）；或完全不用 judge（质量维度盲区，A5 门控只有行为信号）
+- **回退/可逆方案**：judge 作为独立模块（`src/evals/semantic_grader.py`），不接入 run_evals 主流程；关闭开关即回到纯规则基线；D2 校准一致性 <85% 时不启用 judge 参与门控
+- **约束**：judge 只在抽样/门控场景调用，不进常规回归；judge 打分不写入行为指标 CSV 的判定列
+
+## D008: Embedding 采用 OpenAI 兼容 API 通道 + 本地模型兜底
+
+- **日期**：2026-08-13
+- **决策**：embedding 统一走 `src/rag/embedding.py` 的 `EmbeddingClient` 接口。配置 `EMBEDDING_API_KEY`（+ `EMBEDDING_BASE_URL`/`EMBEDDING_MODEL_ID`）时走 OpenAI 兼容 `/v1/embeddings` 远程 API（当前 SiliconFlow `Qwen/Qwen3-VL-Embedding-8B`，4096 维，API 返回向量做 L2 归一化对齐 sentence-transformers 语义）；未配置 key 时回退本地 `all-MiniLM-L6-v2`。构建索引与检索共用同一接口，`kb_metadata.json` 记录实际 `model_name`
+- **原因**：摆脱本地下载/加载 embedding 模型的重量级依赖与磁盘占用，且 bge-m3 多语言检索质量优于 MiniLM；符合 D003 的 OpenAI 兼容通道原则
+- **否决方案**：替换为专用 SDK 调用（破坏 OpenAI 兼容通道）；或在 rag 层散落多份模型配置（违反集中管理）
+- **回退/可逆方案**：删除 `.env` 中 `EMBEDDING_API_KEY` 即自动回退本地模型（**回退后必须用本地模型重建索引**，否则 1024 维索引与 384 维 query 不匹配会报错）；索引重建入口不变（`python -m src.rag.build_index`）
+- **约束**：embedding key/url 只存 `.env`；切换 embedding 模型后必须重建 `data/index/` 再跑 regression 验证 KB 路径
