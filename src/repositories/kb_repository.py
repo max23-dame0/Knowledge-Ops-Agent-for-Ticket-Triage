@@ -69,23 +69,27 @@ class KBRepository:
             return self._index
 
     def get_embedding_model(self, model_name: str):
-        """Return the (module-level cached) sentence-transformers model."""
-        return _cached_embedding_model(model_name)
+        """Return the (module-level cached) embedding encoder.
+
+        API 模式（EMBEDDING_API_KEY 已配置）返回远程编码器，否则返回
+        本地 sentence-transformers 编码器；两者共享 encode 接口。
+        """
+        return _cached_embedding_client(model_name)
 
     def refresh(self) -> None:
         """Invalidate cached index and metadata (call after index rebuild)."""
         with self._lock:
             self._index = None
             self._metadata = None
-        _cached_embedding_model.cache_clear()
+        _cached_embedding_client.cache_clear()
 
 
 @lru_cache(maxsize=4)
-def _cached_embedding_model(model_name: str):
-    """Load and cache the sentence-transformers model at module level."""
-    from sentence_transformers import SentenceTransformer
+def _cached_embedding_client(model_name: str):
+    """Build and cache the embedding encoder at module level."""
+    from src.rag.embedding import get_embedding_client
 
-    return SentenceTransformer(model_name)
+    return get_embedding_client(model_name)
 
 
 # Module-level singleton shared by retrieval callers.

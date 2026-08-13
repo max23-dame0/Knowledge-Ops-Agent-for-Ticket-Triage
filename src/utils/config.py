@@ -18,6 +18,20 @@ class OpenAISettings:
     base_url: str | None = None
 
 
+@dataclass(frozen=True)
+class EmbeddingSettings:
+    """Connection settings for an OpenAI-compatible embeddings endpoint."""
+
+    api_key: str
+    model: str
+    base_url: str
+
+
+EMBEDDING_API_KEY_ENV = "EMBEDDING_API_KEY"
+EMBEDDING_MODEL_ID_ENV = "EMBEDDING_MODEL_ID"
+EMBEDDING_BASE_URL_ENV = "EMBEDDING_BASE_URL"
+
+
 
 def get_openai_api_key() -> str:
     """Load and return the API key for an OpenAI-compatible endpoint."""
@@ -45,6 +59,32 @@ def get_openai_settings() -> OpenAISettings:
 
     return OpenAISettings(api_key=api_key, model=model, base_url=base_url)
 
+
+
+def get_embedding_settings() -> EmbeddingSettings | None:
+    """Load optional embedding API settings; return None for local fallback mode.
+
+    Embedding 走 OpenAI 兼容 /embeddings 端点（如 SiliconFlow bge-m3）。
+    未配置 EMBEDDING_API_KEY 时返回 None，调用方回退到本地
+    sentence-transformers 模型。
+    """
+    load_dotenv()
+    api_key = os.getenv(EMBEDDING_API_KEY_ENV, "").strip()
+    if not api_key:
+        return None
+    model = os.getenv(EMBEDDING_MODEL_ID_ENV, "").strip()
+    if not model:
+        raise ValueError(
+            "已配置 EMBEDDING_API_KEY，但缺少 EMBEDDING_MODEL_ID。"
+            "请在环境变量或本地 .env 文件中配置。"
+        )
+    base_url = os.getenv(EMBEDDING_BASE_URL_ENV, "").strip()
+    if not base_url:
+        raise ValueError(
+            "已配置 EMBEDDING_API_KEY，但缺少 EMBEDDING_BASE_URL。"
+            "请在环境变量或本地 .env 文件中配置。"
+        )
+    return EmbeddingSettings(api_key=api_key, model=model, base_url=base_url)
 
 
 def get_openai_client() -> OpenAI:

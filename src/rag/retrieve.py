@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from src.repositories.kb_repository import KBRepository, get_kb_repository
-
 # Heavy dependencies (faiss / numpy / sentence-transformers) are imported
 # lazily inside the functions below. This keeps the import chain light so
 # agent routing logic can be imported and unit-tested without the RAG stack.
+from src.rag.embedding import resolve_embedding_model_name
+from src.repositories.kb_repository import KBRepository, get_kb_repository
 
-DEFAULT_MODEL_NAME = "all-MiniLM-L6-v2"
+DEFAULT_MODEL_NAME = resolve_embedding_model_name()
 DEFAULT_INDEX_PATH = "data/index/kb_index.faiss"
 DEFAULT_METADATA_PATH = "data/index/kb_metadata.json"
 

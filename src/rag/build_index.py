@@ -12,7 +12,7 @@ from src.rag.chunking import chunk_kb_documents
 def build_kb_index(
     input_dir: str = "data/kb_docs",
     output_dir: str = "data/index",
-    model_name: str = "all-MiniLM-L6-v2",
+    model_name: str | None = None,
     chunk_size: int = 400,
     overlap: int = 80,
     index_type: str = "hnsw",
@@ -22,19 +22,24 @@ def build_kb_index(
     index_type:
     - "hnsw": approximate HNSW index (scales better for large corpora; default)
     - "flat": exact brute-force L2 index (baseline, kept for small corpora)
+
+    model_name 为 None 时由 embedding 配置解析：配置了 EMBEDDING_API_KEY
+    走远程 API 模型，否则用本地默认模型（见 src/rag/embedding.py）。
     """
     import faiss
     import numpy as np
-    from sentence_transformers import SentenceTransformer
+
+    from src.rag.embedding import get_embedding_client
 
     chunks = chunk_kb_documents(input_dir=input_dir, chunk_size=chunk_size, overlap=overlap)
     if not chunks:
         raise ValueError(f"No markdown chunks were created from: {input_dir}")
 
-    model = SentenceTransformer(model_name)
+    client = get_embedding_client(model_name)
     texts = [chunk["text"] for chunk in chunks]
-    embeddings = model.encode(texts, convert_to_numpy=True, show_progress_bar=False)
+    embeddings = client.encode(texts, convert_to_numpy=True, show_progress_bar=False)
     vectors = np.asarray(embeddings, dtype="float32")
+    resolved_model_name = client.model_name
 
     if index_type == "hnsw":
         # HNSW32 with a modest construction budget: good quality/speed trade-off.
@@ -62,7 +67,7 @@ def build_kb_index(
         "metadata_path": str(metadata_path),
         "chunk_count": len(chunks),
         "embedding_dim": int(vectors.shape[1]),
-        "model_name": model_name,
+        "model_name": resolved_model_name,
         "index_type": index_type,
     }
 
