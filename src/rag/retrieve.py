@@ -23,6 +23,7 @@ def retrieve_kb(
     use_hybrid: bool = True,
     min_score: float = 0.25,
     vector_weight: float = 0.7,
+    query_expansion: bool = True,
 ) -> list[dict[str, object]]:
     """Retrieve the most relevant knowledge base passages for a query.
 
@@ -32,8 +33,16 @@ def retrieve_kb(
 
     Hybrid mode (default) blends vector similarity with a dependency-free
     BM25 keyword score and marks weak hits with `low_confidence=True` when the
-    fused score is below `min_score`.
+    fused score is below `min_score`. Rule-based query expansion (C3) is
+    applied to the search query by default; the original query is preserved
+    in the output contract and explicit queries are never rewritten.
     """
+    search_query = query
+    if query_expansion:
+        from src.rag.query_expansion import expand_query
+
+        search_query = expand_query(query)
+
     repo = _resolve_repository(index_path, metadata_path, model_name)
     if not repo.available():
         raise FileNotFoundError(
@@ -49,7 +58,7 @@ def retrieve_kb(
     from src.rag.hybrid import BM25Scorer, fuse_scores
 
     model = repo.get_embedding_model(model_name)
-    query_vector = model.encode([query], convert_to_numpy=True, show_progress_bar=False)
+    query_vector = model.encode([search_query], convert_to_numpy=True, show_progress_bar=False)
     query_vector = np.asarray(query_vector, dtype="float32")
 
     index = repo.get_index()
@@ -64,7 +73,7 @@ def retrieve_kb(
     bm25 = None
     if use_hybrid:
         bm25 = BM25Scorer([item["text"] for item in metadata])
-        bm25_scores = bm25.score_normalized(query)
+        bm25_scores = bm25.score_normalized(search_query)
 
     candidates: list[tuple[float, int]] = []
     for item_index, vector_score in vector_scores_by_index.items():
