@@ -43,7 +43,7 @@
 |------|:--:|------|------|
 | Harness 文件（AGENTS.md / PROGRESS.md / DECISIONS.md / .codebuddy/） | ✅ 已提交（3a545fa） | 已完成 | - |
 | 企业就绪度差距分析文档（含修复完成记录）+ PROGRESS 更新 | 🟡 已更新待提交 | 本轮收尾 commit | 1-4 |
-| 文档治理：README/README_CN 精简为入口（~90 行）+ documents/ 语料体系（架构/工具/评测/验收清单/演示场景 + 五要素索引）+ 02-review 补 frontmatter + 引用修复 | 🟡 已更新待提交 | 本轮收尾 commit | 文档治理 |
+| 文档治理：README/README_CN 精简为入口（~90 行）+ documents/ 语料体系（架构/工具/评测/验收清单/演示场景 + 五要素索引）+ 02-review 补 frontmatter + 引用修复 | ✅ 已提交（3763dc1） | 已完成 | 文档治理 |
 
 ## 整体进度
 
