@@ -55,8 +55,9 @@
 | `.venv\Scripts\python.exe -m src.rag.build_index`（HNSW 默认，19 chunks，embedding=SiliconFlow Qwen/Qwen3-VL-Embedding-8B 4096 维） | ✅ 已重建 + 检索冒烟通过（vpn→vpn_login 0.64 strong） |
 | `... run_evals --mode offline`（66 用例，DeepSeek 远程端点） | ✅ **五项指标全 100%**（route/tool/clarify/grounding/refusal，0 失败样本，2026-08-14 遗留修复后） |
 | A6 真实端到端（eval→反思→注入→回归→安全对比→门控） | ✅ 全链路跑通，安全指标持平（1.0→1.0），门控如实拒绝（fixed=0） |
-| FastAPI 冒烟（/healthz、/agent/ask） | ✅ TestClient 已验证；真实部署待执行 |
-| git status / 未提交清单 | ✅ 已提交并推送（origin/main ..df53fb5，2026-08-14） |
+| FastAPI 真实部署（uvicorn 进程 + HTTP 冒烟 + fail-closed + 12/12 验收 + Streamlit UI） | ✅ 已验证（2026-08-14，报告 REP-DEPLOY-001） |
+| 统一 CLI（`python -m src.cli`：ask/interactive/acceptance/api-health/api-ask/api-smoke） | ✅ 已提交（7590801/cd136de，6 单测） |
+| git status / 未提交清单 | ✅ 已提交并推送（origin/main ..8cb23c4，2026-08-14） |
 | 当前 blocker | 无 |
 
 ## 未提交改动清单（与 git 强一致）
@@ -90,6 +91,7 @@
 
 | 日期 | 做了什么（一行） | 验证 | 下一步 | 日志 |
 |------|---------|:--:|------|
+| 2026-08-14 | 真实部署验证闭环：开发统一 CLI（src/cli.py：ask/interactive/acceptance/api-health/api-ask/api-smoke），启动 uvicorn 真实进程跑 HTTP 冒烟（healthz 200 / 错误 key 401 fail-closed / 真实提问全链路），12 条人工验收清单 12/12 全过，Streamlit UI 启动 200；验证中修复 CLI 的 HTTPError 处理 bug | pytest 269 passed / ruff 0 / 验收 12/12 | 已推送（8cb23c4）；D3 等方向 B | `.codebuddy/memory/2026-08-14.md` |
 | 2026-08-14 | PLN-001 遗留修复：E009（升级政策问题路由 kb）+ E035（升级意图不再被 KB 模糊澄清拦截）+ E049（eval 标注 unsafe 修正）+ fabrication 度量细化（LLM 自拒答不计幻觉），TDD 3 新测试，真实 DeepSeek 复跑 offline eval 五项指标全 100% | pytest 246 passed / ruff 0 / 66 样本 0 失败 | 已推送（df53fb5）；D2 待标注 | `.codebuddy/memory/2026-08-14.md` |
 | 2026-08-13 | Embedding 切换为 SiliconFlow API（最终 Qwen/Qwen3-VL-Embedding-8B，4096 维；先 bge-m3 后改 Qwen3-VL）：新增 src/rag/embedding.py（API 客户端 + 本地兜底 + L2 归一化）、config.py 加 EmbeddingSettings、kb_repository/build_index/retrieve 接入统一接口、.env/.env.example 配置；重建 HNSW 索引（19 chunks） | API 连通 ✅、检索冒烟 vpn→0.64 strong、pytest 227 passed | 待提交（登记未提交清单） | `.codebuddy/memory/2026-08-13.md` |
 | 2026-08-13 | PLN-001 交付：自我改进引擎 A1-A6 全链路 + RAG 深化 C1-C4（CrossEncoder rerank/相关性门控/查询改写/检索评测）+ 评测升级 D1（semantic grader），ADR D007，9 个 commit | pytest 233 passed（+69）/ ruff 0 / rerank recall@1 0.90→1.00、MRR 0.95→1.00 | D2 需用户标注；A6 真实端到端待 LLM 端点 | `.codebuddy/memory/2026-08-13.md` |
