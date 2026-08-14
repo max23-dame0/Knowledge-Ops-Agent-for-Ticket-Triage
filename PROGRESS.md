@@ -19,7 +19,7 @@
 | A3 | 经验池（jsonl/容量/去重/检索） | A2 | ✅ 已提交（c1d850e，6 单测） | pytest | - |
 | A4 | 检索增强注入（开关可关闭） | A3, C1 | ✅ 已提交（5b2b9d1，6 单测+主链路集成） | pytest | - |
 | A5 | 自我改进门控（安全硬 gate） | A4 | ✅ 已提交（82a7781，5 单测） | pytest | - |
-| A6 | 自动迭代 loop（端到端） | A5 | ✅ 已提交（b945d85 mock + 704eb23 driver + 8fc7732 真实端到端报告） | pytest + 真实 DeepSeek 全链路 | 预检层修复后复跑 |
+| A6 | 自动迭代 loop（端到端） | A5 | ✅ 已提交（b945d85 mock + 704eb23 driver + 8fc7732 真实端到端 + df53fb5 遗留修复） | pytest + 真实 DeepSeek 全链路 | eval 全绿收敛（0 失败样本） |
 | C1 | CrossEncoder rerank | 无 | ✅ 已提交（a810077，3 单测+真实链路冒烟） | pytest + C4 对比 | - |
 | C2 | 相关性门控 + 低置信信号 | C1 | ✅ 已提交（a810077，6 单测） | pytest | - |
 | C3 | 查询改写（规则式） | 无 | ✅ 已提交（8f3c11c，5 单测+检索链路接入） | pytest | - |
@@ -50,14 +50,13 @@
 
 | 检查项 | 状态 |
 |------|------|
-| `pytest tests/`（**238 passed / 0 skipped**，含 PLN-001 +69） | ✅ 已验证（2026-08-13） |
-| `ruff check src tests app.py` | ✅ 0 错误（2026-08-13） |
+| `pytest tests/`（**246 passed / 0 skipped**，含 PLN-001 +74） | ✅ 已验证（2026-08-14） |
+| `ruff check src tests app.py` | ✅ 0 错误（2026-08-14） |
 | `.venv\Scripts\python.exe -m src.rag.build_index`（HNSW 默认，19 chunks，embedding=SiliconFlow Qwen/Qwen3-VL-Embedding-8B 4096 维） | ✅ 已重建 + 检索冒烟通过（vpn→vpn_login 0.64 strong） |
-| `... run_evals --mode regression`（11 用例，DeepSeek 端点） | ✅ 11/11 100%（2026-08-12） |
-| `... run_evals --mode offline`（66 用例，DeepSeek 远程端点） | ✅ route 97.0% / grounding 100% / refusal 98.5%（2026-08-13，A6 基线） |
+| `... run_evals --mode offline`（66 用例，DeepSeek 远程端点） | ✅ **五项指标全 100%**（route/tool/clarify/grounding/refusal，0 失败样本，2026-08-14 遗留修复后） |
 | A6 真实端到端（eval→反思→注入→回归→安全对比→门控） | ✅ 全链路跑通，安全指标持平（1.0→1.0），门控如实拒绝（fixed=0） |
 | FastAPI 冒烟（/healthz、/agent/ask） | ✅ TestClient 已验证；真实部署待执行 |
-| git status / 未提交清单 | ✅ 已提交并推送（origin/main 3a545fa..cc3c3fb，2026-08-13） |
+| git status / 未提交清单 | ✅ 已提交并推送（origin/main ..df53fb5，2026-08-14） |
 | 当前 blocker | 无 |
 
 ## 未提交改动清单（与 git 强一致）
@@ -66,7 +65,7 @@
 
 | 改动 | 状态 | 计划 commit | 关联任务 |
 |------|:--:|------|------|
-| Embedding API 通道（SiliconFlow Qwen/Qwen3-VL-Embedding-8B）：src/rag/embedding.py 新增 + config.py EmbeddingSettings + kb_repository/build_index/retrieve 接入 + .env.example 模板；索引已按新模型重建，227 单测绿 | 🟡 已验证待提交 | 下一次 commit | 基础设施 |
+| Embedding API 通道（SiliconFlow Qwen/Qwen3-VL-Embedding-8B）：src/rag/embedding.py 新增 + config.py EmbeddingSettings + kb_repository/build_index/retrieve 接入 + .env.example 模板 + tests/test_embedding.py 5 单测；索引已按新模型重建 | ✅ 已提交（e5c500e）并推送 | 已完成 | 基础设施 |
 | Harness 文件（AGENTS.md / PROGRESS.md / DECISIONS.md / .codebuddy/） | ✅ 已提交（3a545fa） | 已完成 | - |
 | 企业就绪度差距分析文档（含修复完成记录）+ PROGRESS 更新 | ✅ 已提交（ad69833/41f457d） | 已完成 | 1-4 |
 | 文档治理：README/README_CN 精简为入口（~90 行）+ documents/ 语料体系（架构/工具/评测/验收清单/演示场景 + 五要素索引）+ 02-review 补 frontmatter + 引用修复 | ✅ 已提交（3763dc1） | 已完成 | 文档治理 |
@@ -91,6 +90,7 @@
 
 | 日期 | 做了什么（一行） | 验证 | 下一步 | 日志 |
 |------|---------|:--:|------|
+| 2026-08-14 | PLN-001 遗留修复：E009（升级政策问题路由 kb）+ E035（升级意图不再被 KB 模糊澄清拦截）+ E049（eval 标注 unsafe 修正）+ fabrication 度量细化（LLM 自拒答不计幻觉），TDD 3 新测试，真实 DeepSeek 复跑 offline eval 五项指标全 100% | pytest 246 passed / ruff 0 / 66 样本 0 失败 | 已推送（df53fb5）；D2 待标注 | `.codebuddy/memory/2026-08-14.md` |
 | 2026-08-13 | Embedding 切换为 SiliconFlow API（最终 Qwen/Qwen3-VL-Embedding-8B，4096 维；先 bge-m3 后改 Qwen3-VL）：新增 src/rag/embedding.py（API 客户端 + 本地兜底 + L2 归一化）、config.py 加 EmbeddingSettings、kb_repository/build_index/retrieve 接入统一接口、.env/.env.example 配置；重建 HNSW 索引（19 chunks） | API 连通 ✅、检索冒烟 vpn→0.64 strong、pytest 227 passed | 待提交（登记未提交清单） | `.codebuddy/memory/2026-08-13.md` |
 | 2026-08-13 | PLN-001 交付：自我改进引擎 A1-A6 全链路 + RAG 深化 C1-C4（CrossEncoder rerank/相关性门控/查询改写/检索评测）+ 评测升级 D1（semantic grader），ADR D007，9 个 commit | pytest 233 passed（+69）/ ruff 0 / rerank recall@1 0.90→1.00、MRR 0.95→1.00 | D2 需用户标注；A6 真实端到端待 LLM 端点 | `.codebuddy/memory/2026-08-13.md` |
 | 2026-08-13 | 文档治理：README×2 从 640/623 行瘦身为 ~90 行精简入口，详细内容拆分至 documents/ 语料（00-architecture×4 + 04-reports×1 + 五要素索引），02-review×5 补 frontmatter，AGENTS/DECISIONS/PROGRESS 引用修复，manual_review_checklist 迁入 documents/ | 链接全部有效、无残留引用 | 已提交（3763dc1）并推送 origin/main（3a545fa..cc3c3fb） | `.codebuddy/memory/2026-08-13.md` |
