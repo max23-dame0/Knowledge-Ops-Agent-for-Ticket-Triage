@@ -20,13 +20,19 @@ from src.evals.semantic_grader import GradeResult, QualityScores, SemanticGrader
 
 def _fake_run_agent(question: str):
     """Fake agent returning a fixed conclusion."""
-    return SimpleNamespace(conclusion=f"回答: {question[:20]}")
+    return SimpleNamespace(conclusion=f"回答: {question[:20]}", evidence=[])
 
 
 class _FakeGrader(SemanticGrader):
     """Grader returning deterministic scores derived from the question length."""
 
-    def grade(self, sample_id: str, question: str, answer: str) -> GradeResult:
+    def grade(
+        self,
+        sample_id: str,
+        question: str,
+        answer: str,
+        evidence: list[str] | None = None,
+    ) -> GradeResult:
         value = 1 + (len(question) % 5)
         return GradeResult(
             sample_id=sample_id,
@@ -199,6 +205,37 @@ def test_load_labeled_sheet_unfilled_rows_become_none(tmp_path: Path) -> None:
 
     assert human_scores[0] is not None
     assert human_scores[1] is None
+
+
+def test_regeneration_preserves_existing_human_labels(tmp_path: Path) -> None:
+    """Re-running the sheet keeps existing human labels (annotator-safe)."""
+    eval_set = tmp_path / "eval.csv"
+    with eval_set.open("w", encoding="utf-8-sig", newline="") as file:
+        writer = csv.DictWriter(file, fieldnames=["id", "question", "expected_route"])
+        writer.writeheader()
+        writer.writerow({"id": "E001", "question": "VPN 登录失败怎么办", "expected_route": "kb"})
+
+    output = tmp_path / "labeling.tsv"
+    _write_labeled_tsv(
+        output,
+        [_row("E001", ("5", "4", "3"), ("5", "3", "5"))],
+    )
+
+    with patch("src.evals.judge_calibration.run_agent", side_effect=_fake_run_agent):
+        build_labeling_sheet(
+            eval_set=str(eval_set),
+            output_path=str(output),
+            limit=1,
+            grader=_FakeGrader(),
+        )
+
+    with output.open("r", encoding="utf-8-sig", newline="") as file:
+        reader = csv.DictReader(file, delimiter="\t")
+        records = list(reader)
+    assert len(records) == 1
+    assert records[0]["human_correctness"] == "5"
+    assert records[0]["human_completeness"] == "3"
+    assert records[0]["human_evidence_support"] == "5"
 
 
 def test_run_calibration_report_two_tolerances(tmp_path: Path) -> None:

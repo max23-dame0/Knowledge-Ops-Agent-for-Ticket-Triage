@@ -22,10 +22,11 @@ GRADE_PROMPT_TEMPLATE = """
 只输出一个 JSON 对象，不要输出任何解释：
 - correctness: 回答内容与问题事实是否一致、有无错误
 - completeness: 回答是否覆盖了问题的关键方面
-- evidence_support: 回答是否有工具证据支撑、是否与证据一致
+- evidence_support: 回答是否有工具证据支撑、是否与证据一致（依据"证据"部分判断，证据为空时该维度应打低分）
 
 问题：{question}
 回答：{answer}
+证据：{evidence}
 
 输出 JSON 格式：{{"correctness": 5, "completeness": 4, "evidence_support": 5}}
 """.strip()
@@ -74,9 +75,25 @@ class SemanticGrader:
         self._client = get_openai_client()
         return self._client
 
-    def grade(self, sample_id: str, question: str, answer: str) -> GradeResult:
-        """Judge one answer; failures become error results, never exceptions."""
-        prompt = GRADE_PROMPT_TEMPLATE.format(question=question, answer=answer)
+    def grade(
+        self,
+        sample_id: str,
+        question: str,
+        answer: str,
+        evidence: list[str] | None = None,
+    ) -> GradeResult:
+        """Judge one answer; failures become error results, never exceptions.
+
+        `evidence` holds the grounded evidence lines produced by the agent's
+        tool calls; the judge uses it to score evidence_support instead of
+        guessing from the answer text alone (D2 calibration root cause fix).
+        """
+        evidence_text = "\n".join(evidence) if evidence else "无证据"
+        prompt = GRADE_PROMPT_TEMPLATE.format(
+            question=question,
+            answer=answer,
+            evidence=evidence_text,
+        )
         try:
             client = self._get_client()
             response = client.chat.completions.create(

@@ -15,10 +15,12 @@ from src.evals.semantic_grader import (
 
 def _make_client(reply: str, raise_error: bool = False) -> object:
     """Build a fake OpenAI-compatible client returning a fixed completion."""
+    sent_prompts: list[str] = []
 
     def chat_completions_create(**kwargs: object) -> object:
         if raise_error:
             raise RuntimeError("endpoint down")
+        sent_prompts.append(str(kwargs["messages"][-1]["content"]))
         return SimpleNamespace(
             choices=[
                 SimpleNamespace(
@@ -27,7 +29,9 @@ def _make_client(reply: str, raise_error: bool = False) -> object:
             ]
         )
 
-    return SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=chat_completions_create)))
+    client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=chat_completions_create)))
+    client.sent_prompts = sent_prompts  # type: ignore[attr-defined]
+    return client
 
 
 VALID_REPLY = json.dumps(
@@ -87,6 +91,34 @@ def test_prompt_template_contains_three_dimensions() -> None:
     prompt = GRADE_PROMPT_TEMPLATE.format(
         question="q",
         answer="a",
+        evidence="",
     )
     for dimension in ("correctness", "completeness", "evidence_support"):
         assert dimension in prompt
+
+
+def test_grade_includes_evidence_in_prompt() -> None:
+    """Evidence passed to grade() reaches the judge prompt (D2 root cause fix)."""
+    client = _make_client(VALID_REPLY)
+    grader = SemanticGrader(client=client)
+
+    grader.grade(
+        sample_id="E001",
+        question="q",
+        answer="a",
+        evidence=["KB source=vpn_login | passage=排查步骤"],
+    )
+
+    prompt = client.sent_prompts[0]  # type: ignore[attr-defined]
+    assert "KB source=vpn_login" in prompt
+
+
+def test_grade_without_evidence_marks_none() -> None:
+    """Missing evidence renders as an explicit empty marker, not a crash."""
+    client = _make_client(VALID_REPLY)
+    grader = SemanticGrader(client=client)
+
+    grader.grade(sample_id="E002", question="q", answer="a")
+
+    prompt = client.sent_prompts[0]  # type: ignore[attr-defined]
+    assert "无" in prompt or "无证据" in prompt

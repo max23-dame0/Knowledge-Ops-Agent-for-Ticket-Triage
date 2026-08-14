@@ -50,16 +50,35 @@ def load_kb_samples(eval_set: str = DEFAULT_EVAL_SET, limit: int = 12) -> list[d
     return kb_rows[:limit]
 
 
-def _judge_answer(grader: SemanticGrader, row: dict[str, str]) -> tuple[str, GradeResult]:
-    """Run the agent once and judge its conclusion."""
+def _judge_answer(grader: SemanticGrader, row: dict[str, str]) -> tuple[str, list[str], GradeResult]:
+    """Run the agent once and judge its conclusion with grounding evidence."""
     answer = run_agent(row["question"])
     conclusion = answer.conclusion.strip()
+    evidence = [str(item) for item in (answer.evidence or [])]
     grade = grader.grade(
         sample_id=row.get("id", ""),
         question=row.get("question", ""),
         answer=conclusion,
+        evidence=evidence,
     )
-    return conclusion, grade
+    return conclusion, evidence, grade
+
+
+def _load_existing_human_labels(output_path: str | Path) -> dict[str, tuple[str, str, str]]:
+    """Load human labels from an existing sheet so regeneration keeps them."""
+    path = Path(output_path)
+    if not path.exists():
+        return {}
+    labels: dict[str, tuple[str, str, str]] = {}
+    with path.open("r", encoding="utf-8-sig", newline="") as file:
+        reader = csv.DictReader(file, delimiter="\t")
+        for row in reader:
+            c = (row.get("human_correctness") or "").strip()
+            m = (row.get("human_completeness") or "").strip()
+            e = (row.get("human_evidence_support") or "").strip()
+            if c and m and e:
+                labels[row.get("sample_id", "")] = (c, m, e)
+    return labels
 
 
 def build_labeling_sheet(
@@ -68,16 +87,23 @@ def build_labeling_sheet(
     limit: int = 12,
     grader: SemanticGrader | None = None,
 ) -> Path:
-    """Produce the TSV labeling sheet with judge scores pre-filled."""
+    """Produce the TSV labeling sheet with judge scores pre-filled.
+
+    Existing human labels in the output file are preserved so re-running
+    the calibration (e.g. after a judge prompt fix) does not destroy the
+    annotator's work.
+    """
     active_grader = grader or SemanticGrader()
     samples = load_kb_samples(eval_set, limit)
+    existing_human = _load_existing_human_labels(output_path)
 
     records: list[dict[str, str]] = []
     for index, row in enumerate(samples, start=1):
         logger.info("judge_calibration | sample=%s/%s id=%s", index, len(samples), row.get("id"))
-        conclusion, grade = _judge_answer(active_grader, row)
+        conclusion, _evidence, grade = _judge_answer(active_grader, row)
+        sample_id = row.get("id", "")
         record: dict[str, str] = {
-            "sample_id": row.get("id", ""),
+            "sample_id": sample_id,
             "question": row.get("question", ""),
             "answer": conclusion,
             "judge_correctness": "",
@@ -92,7 +118,12 @@ def build_labeling_sheet(
             record["judge_completeness"] = str(grade.scores.completeness)
             record["judge_evidence_support"] = str(grade.scores.evidence_support)
         else:
-            logger.warning("judge_calibration | judge_failed id=%s error=%s", row.get("id"), grade.error)
+            logger.warning("judge_calibration | judge_failed id=%s error=%s", sample_id, grade.error)
+        if sample_id in existing_human:
+            c, m, e = existing_human[sample_id]
+            record["human_correctness"] = c
+            record["human_completeness"] = m
+            record["human_evidence_support"] = e
         records.append(record)
 
     out_path = Path(output_path)
@@ -102,7 +133,12 @@ def build_labeling_sheet(
         writer.writeheader()
         writer.writerows(records)
 
-    logger.info("judge_calibration | wrote=%s samples=%d", out_path, len(records))
+    logger.info(
+        "judge_calibration | wrote=%s samples=%d kept_human=%d",
+        out_path,
+        len(records),
+        len(existing_human),
+    )
     return out_path
 
 
