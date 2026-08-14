@@ -625,19 +625,46 @@ def _resolve_route(user_input: str, is_ticket_query: bool, is_escalation_query: 
     return "clarify"
 
 
+def _normalize_agent_json(data: dict[str, Any]) -> dict[str, Any]:
+    """Tolerantly normalize a model JSON dict before pydantic validation.
+
+    The model sometimes emits list fields (`evidence`, `next_actions`,
+    `next_action`) as a single string, or omits required fields. Normalizing
+    those here keeps the JSON path from falling through to text parsing and
+    leaking raw JSON into the conclusion.
+    """
+    normalized = dict(data)
+
+    for key in ("evidence", "next_actions", "next_action"):
+        value = normalized.get(key)
+        if isinstance(value, str):
+            normalized[key] = [value] if value.strip() else []
+
+    if normalized.get("clarification_question") == "":
+        normalized["clarification_question"] = None
+
+    normalized.setdefault("conclusion", "")
+    normalized.setdefault("evidence", [])
+    normalized.setdefault("confidence", 0.5)
+    normalized.setdefault("needs_clarification", False)
+    return normalized
+
+
 def _coerce_agent_output(final_output: Any) -> AgentAnswer:
     """Coerce model output into the expected response schema with tolerant parsing."""
     if isinstance(final_output, AgentAnswer):
         return final_output
     if isinstance(final_output, dict):
-        return AgentAnswer.model_validate(final_output)
+        return AgentAnswer.model_validate(_normalize_agent_json(final_output))
     if isinstance(final_output, str):
         cleaned = _strip_think_blocks(final_output).strip()
         json_candidate = _extract_json_object(cleaned)
         if json_candidate is not None:
             try:
-                return AgentAnswer.model_validate_json(json_candidate)
-            except Exception:  # noqa: S110, BLE001 - intentional: fall through to text parsing
+                data = json.loads(json_candidate)
+                if isinstance(data, dict):
+                    return AgentAnswer.model_validate(_normalize_agent_json(data))
+            except Exception:  # noqa: S110, BLE001 - fall through to text parsing on corrupt JSON
                 pass
         return _parse_text_response(cleaned)
     return AgentAnswer.model_validate(final_output)

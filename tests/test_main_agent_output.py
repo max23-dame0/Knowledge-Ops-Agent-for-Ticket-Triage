@@ -48,6 +48,37 @@ class TestCoerceAgentOutput:
         assert output.conclusion == "json结论"
         assert output.confidence == 0.9
 
+    def test_json_with_string_list_fields_is_normalized(self) -> None:
+        # The model sometimes emits evidence/next_actions as a single string
+        # instead of a list; that must parse instead of leaking raw JSON.
+        raw = (
+            '{"conclusion": "结论文本", "evidence": "知识库来源", '
+            '"next_actions": "请先确认账号类型", "should_handoff": false, '
+            '"confidence": 0.85, "needs_clarification": false, '
+            '"clarification_question": null}'
+        )
+        output = _coerce_agent_output(raw)
+        assert output.conclusion == "结论文本"
+        assert output.evidence == ["知识库来源"]
+        assert output.next_actions == ["请先确认账号类型"]
+        assert output.confidence == 0.85
+
+    def test_json_with_empty_string_clarification_becomes_none(self) -> None:
+        raw = (
+            '{"conclusion": "c", "evidence": [], "confidence": 0.5, '
+            '"needs_clarification": false, "clarification_question": ""}'
+        )
+        output = _coerce_agent_output(raw)
+        assert output.clarification_question is None
+
+    def test_json_with_missing_required_fields_is_filled(self) -> None:
+        # Missing evidence/confidence/needs_clarification must not leak raw JSON.
+        raw = '{"conclusion": "只有结论"}'
+        output = _coerce_agent_output(raw)
+        assert output.conclusion == "只有结论"
+        assert output.evidence == []
+        assert output.needs_clarification is False
+
     def test_plain_text_fallback(self) -> None:
         raw = "结论：这是文本回答\n置信度：0.7"
         output = _coerce_agent_output(raw)
