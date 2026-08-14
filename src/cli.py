@@ -69,13 +69,22 @@ def run_acceptance(agent_runner: Callable[[str], Any]) -> list[dict[str, str]]:
 
 
 def _http_json(url: str, *, method: str = "GET", headers: dict[str, str] | None = None, payload: dict[str, Any] | None = None) -> tuple[int, dict[str, Any]]:
-    """Perform one HTTP JSON call and return (status, parsed body)."""
+    """Perform one HTTP JSON call and return (status, parsed body).
+
+    HTTP error statuses (401/429/503) are surfaced as (status, detail) so
+    callers can branch on them instead of crashing on urllib HTTPError.
+    """
     data = json.dumps(payload).encode("utf-8") if payload is not None else None
     request = urllib.request.Request(url, data=data, headers=headers or {}, method=method)
-    with urllib.request.urlopen(request, timeout=120) as response:
-        body = response.read().decode("utf-8")
+    try:
+        with urllib.request.urlopen(request, timeout=120) as response:
+            body = response.read().decode("utf-8")
+        status = response.status
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        status = exc.code
     parsed = json.loads(body) if body else {}
-    return response.status, parsed
+    return status, parsed
 
 
 def api_health(base_url: str = DEFAULT_BASE_URL) -> dict[str, Any]:

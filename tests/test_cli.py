@@ -102,3 +102,26 @@ def test_api_ask_sends_auth_header_and_parses_answer() -> None:
 
     assert captured["key"] == "local-dev-key-001"
     assert result["answer"]["route"] == "kb"
+
+
+def test_api_ask_rejects_http_401_as_runtime_error() -> None:
+    """A 401 response becomes a RuntimeError with the status in the message."""
+    import urllib.error
+
+    class _HttpErrorResponse:
+        code = 401
+
+        def read(self) -> bytes:
+            return json.dumps({"detail": "Invalid or missing API key."}).encode("utf-8")
+
+    def urlopen(request, timeout=None):
+        del request, timeout
+        raise urllib.error.HTTPError("url", 401, "Unauthorized", {}, _HttpErrorResponse())
+
+    with patch("src.cli.urllib.request.urlopen", side_effect=urlopen):
+        try:
+            api_ask("q", "wrong-key", "http://127.0.0.1:8000")
+        except RuntimeError as exc:
+            assert "401" in str(exc)
+            return
+    raise AssertionError("expected RuntimeError for 401 response")
