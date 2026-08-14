@@ -17,14 +17,6 @@ class RetrievalHit(BaseModel):
         default=False,
         description="True when the hit is below the relevance threshold.",
     )
-    rerank_score: float | None = Field(
-        default=None,
-        description="CrossEncoder rerank score normalized to 0-1; None when rerank fell back.",
-    )
-    strong_evidence: bool = Field(
-        default=False,
-        description="True when the rerank score clears the relevance gate (C2).",
-    )
 
 
 class RetrievalOutput(BaseModel):
@@ -50,14 +42,13 @@ class RetrievalAgent:
             if hit.source_title not in source_titles:
                 source_titles.append(hit.source_title)
             passage_summary = " ".join(hit.passage.split())[:180].strip()
-            weak_mark = "" if hit.strong_evidence else " | weak_evidence"
             if passage_summary:
                 normalized_evidence.append(
-                    f"KB source={hit.source_title} | score={hit.score:.3f} | passage={passage_summary}{weak_mark}"
+                    f"KB source={hit.source_title} | score={hit.score:.3f} | passage={passage_summary}"
                 )
             else:
                 normalized_evidence.append(
-                    f"KB source={hit.source_title} | score={hit.score:.3f}{weak_mark}"
+                    f"KB source={hit.source_title} | score={hit.score:.3f}"
                 )
 
         return RetrievalOutput(

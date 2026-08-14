@@ -28,13 +28,6 @@ from src.utils.resilience import CircuitBreaker, ResponseCache
 logger = get_logger("knowledge_ops.agent")
 _CURRENT_TOOL_CALLS: list[dict[str, Any]] = []
 
-
-def _experience_injection_enabled() -> bool:
-    """Return True when the A4 experience injection toggle is on (env-controlled)."""
-    from src.improvement.injection import injection_enabled
-
-    return injection_enabled()
-
 # Endpoint resilience: fail fast when the model endpoint is unhealthy, and
 # serve repeated identical questions from the bounded cache to save tokens.
 _circuit_breaker = CircuitBreaker(failure_threshold=3, cooldown_seconds=30.0)
@@ -430,19 +423,6 @@ def _run_agent_inner(user_input: str) -> AgentAnswer:
             f"User question: {normalized}"
         )
 
-    # A4 experience injection (disabled by default): append pattern-level
-    # experience as prompt context only; routing stays with main_agent (D004).
-    if _experience_injection_enabled():
-        from src.tools.experience_retrieval import retrieve_experience
-
-        experiences = retrieve_experience(query=normalized, top_k=3)
-        if experiences:
-            from src.improvement.injection import build_experience_injection
-
-            injection = build_experience_injection(experiences)
-            agent_input = f"{agent_input}\n\n{injection}"
-            logger.info("experience_injection | entries=%d", len(experiences))
-
     if not _circuit_breaker.allow_request():
         logger.warning("circuit_open=true | failing fast for question=%s", normalized)
         degraded = _finalize_response(
@@ -606,10 +586,6 @@ def _resolve_route(user_input: str, is_ticket_query: bool, is_escalation_query: 
     """
     if _looks_like_kb_policy_query(user_input):
         return "kb"
-    # Escalation policy questions ("什么情况下必须升级给二线") answer from
-    # the KB; routing them to clarify makes the KB policy doc unreachable.
-    if _looks_like_escalation_policy_query(user_input):
-        return "kb"
     # Bare policy questions ("sla 首次响应时限是多少") without ticket/escalation
     # markers are KB questions too; keep them out of the clarify fallback.
     if any(hint in user_input for hint in KB_POLICY_HINTS):
@@ -625,46 +601,19 @@ def _resolve_route(user_input: str, is_ticket_query: bool, is_escalation_query: 
     return "clarify"
 
 
-def _normalize_agent_json(data: dict[str, Any]) -> dict[str, Any]:
-    """Tolerantly normalize a model JSON dict before pydantic validation.
-
-    The model sometimes emits list fields (`evidence`, `next_actions`,
-    `next_action`) as a single string, or omits required fields. Normalizing
-    those here keeps the JSON path from falling through to text parsing and
-    leaking raw JSON into the conclusion.
-    """
-    normalized = dict(data)
-
-    for key in ("evidence", "next_actions", "next_action"):
-        value = normalized.get(key)
-        if isinstance(value, str):
-            normalized[key] = [value] if value.strip() else []
-
-    if normalized.get("clarification_question") == "":
-        normalized["clarification_question"] = None
-
-    normalized.setdefault("conclusion", "")
-    normalized.setdefault("evidence", [])
-    normalized.setdefault("confidence", 0.5)
-    normalized.setdefault("needs_clarification", False)
-    return normalized
-
-
 def _coerce_agent_output(final_output: Any) -> AgentAnswer:
     """Coerce model output into the expected response schema with tolerant parsing."""
     if isinstance(final_output, AgentAnswer):
         return final_output
     if isinstance(final_output, dict):
-        return AgentAnswer.model_validate(_normalize_agent_json(final_output))
+        return AgentAnswer.model_validate(final_output)
     if isinstance(final_output, str):
         cleaned = _strip_think_blocks(final_output).strip()
         json_candidate = _extract_json_object(cleaned)
         if json_candidate is not None:
             try:
-                data = json.loads(json_candidate)
-                if isinstance(data, dict):
-                    return AgentAnswer.model_validate(_normalize_agent_json(data))
-            except Exception:  # noqa: S110, BLE001 - fall through to text parsing on corrupt JSON
+                return AgentAnswer.model_validate_json(json_candidate)
+            except Exception:  # noqa: S110, BLE001 - intentional: fall through to text parsing
                 pass
         return _parse_text_response(cleaned)
     return AgentAnswer.model_validate(final_output)
@@ -829,7 +778,7 @@ def _maybe_clarify(user_input: str) -> AgentAnswer | None:
     if _looks_like_kb_policy_query(user_input):
         return None
 
-    if _looks_like_context_poor_kb_query(user_input) and not _looks_like_escalation_query(user_input):
+    if _looks_like_context_poor_kb_query(user_input):
         return AgentAnswer(
             answer="我需要更多信息才能帮你处理。",
             conclusion="我需要更多信息才能帮你处理。",
@@ -866,7 +815,7 @@ def _maybe_clarify(user_input: str) -> AgentAnswer | None:
         )
 
     if any(keyword in user_input for keyword in KB_KEYWORDS):
-        if _looks_like_context_poor_kb_query(user_input) and not _looks_like_escalation_query(user_input):
+        if _looks_like_context_poor_kb_query(user_input):
             return AgentAnswer(
                 answer="我需要更多信息才能帮你处理。",
                 conclusion="我需要更多信息才能帮你处理。",

@@ -34,7 +34,6 @@ data/raw/
 data/processed/
 data/audit/
 data/eval_datasets/
-data/experience/
 
 # IDE settings
 .vscode/

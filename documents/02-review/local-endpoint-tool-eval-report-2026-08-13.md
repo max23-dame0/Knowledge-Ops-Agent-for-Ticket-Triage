@@ -1,16 +1,3 @@
----
-doc_id: REV-004
-title: "本地端点工具型评测报告"
-category: "review"
-role: "[Delta]"
-status: "published"
-date: "2026-08-13"
-author: "knowledge-ops-agent 团队"
-tags: ["local-endpoint", "tool-eval", "regression", "evaluation"]
-related:
-  - "external-benchmark-total-report-2026-08-13.md"
----
-
 # 本地端点工具型评测报告 — knowledge-ops-agent
 
 > **日期**：2026-08-13

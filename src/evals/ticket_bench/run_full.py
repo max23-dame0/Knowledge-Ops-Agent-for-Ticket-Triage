@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import concurrent.futures as cf
+import hashlib
 import json
 import queue
 import threading
@@ -32,6 +33,7 @@ from pathlib import Path
 from typing import Any
 
 from src.evals.ticket_bench.bench_core import (
+    BASE_URL,
     get_baseline_prompt_tokens,
     load_itsm,
     load_tobi,
@@ -50,6 +52,9 @@ def run_full_dataset(
     checkpoint_path: Path,
     resume: bool,
     report_every: int = 100,
+    reasoning_effort: str = "high",
+    base_url: str = "",
+    api_key: str = "",
 ) -> dict[str, Any]:
     if dataset == "tobi":
         samples = load_tobi(0)  # full 20k pool
@@ -58,7 +63,8 @@ def run_full_dataset(
     total = len(samples)
     print(f"[{dataset}] loaded {total} samples", flush=True)
 
-    baseline = get_baseline_prompt_tokens(model)
+    baseline = get_baseline_prompt_tokens(model, base_url=base_url, reasoning_effort=reasoning_effort,
+                                          api_key=api_key)
     print(f"[{dataset}] baseline_prompt_tokens={baseline}", flush=True)
 
     done_results: list[dict[str, Any]] = []
@@ -67,15 +73,20 @@ def run_full_dataset(
         for line in checkpoint_path.read_text(encoding="utf-8").splitlines():
             try:
                 r = json.loads(line)
+            except json.JSONDecodeError:
+                continue  # skip corrupt checkpoint lines
+            if not r.get("ok"):
+                continue  # skip failed rows so they get retried
+            try:
                 done_results.append(r)
                 done_ids.add(tuple(r["sample_id"]))
-            except (json.JSONDecodeError, KeyError, TypeError):
-                continue  # skip corrupt checkpoint lines
-        print(f"[{dataset}] resumed with {len(done_results)} completed", flush=True)
+            except (KeyError, TypeError):
+                continue
+        print(f"[{dataset}] resumed with {len(done_results)} completed (failed rows will retry)", flush=True)
 
-    pending: queue.Queue[tuple[dict[str, Any], int, tuple[int, int]]] = queue.Queue()
+    pending: queue.Queue[tuple[dict[str, Any], int, tuple[int, str]]] = queue.Queue()
     for idx, s in enumerate(samples):
-        sid = (idx, hash(s["text"][:80]))
+        sid = (idx, hashlib.md5(s["text"][:80].encode("utf-8")).hexdigest())
         if sid in done_ids:
             continue
         pending.put((s, 0, sid))
@@ -97,7 +108,8 @@ def run_full_dataset(
             except queue.Empty:
                 return
             try:
-                r = single_call(model, sample, retries=0, timeout=timeout)
+                r = single_call(model, sample, retries=0, timeout=timeout, base_url=base_url,
+                                reasoning_effort=reasoning_effort, api_key=api_key)
             except Exception as exc:  # noqa: BLE001
                 r = {"ok": False, "error": f"exc:{exc}", "latency": timeout, "tool_calls": [],
                      "prompt_tokens": 0, "completion_tokens": 0, "content_len": 0}
@@ -141,6 +153,7 @@ def run_full_dataset(
                     "sample_id": sid, "ok": True, "error": None,
                     "latency": r["latency"], "tool_calls": r["tool_calls"],
                     "prompt_tokens": r["prompt_tokens"], "completion_tokens": r["completion_tokens"],
+                    "content_len": r["content_len"],
                     "type": sample.get("type", ""), "text": sample["text"][:100],
                 }
             with checkpoint_lock, checkpoint_path.open("a", encoding="utf-8") as fh:
@@ -177,7 +190,7 @@ def run_full_dataset(
         quality["kb_grounding_rate"] = round(kb_calls / max(len(ok_rows), 1), 4)
         quality["escalation_signal_rate"] = round(esc_calls / max(len(ok_rows), 1), 4)
         quality["answerable_rate"] = round(
-            sum(1 for r in ok_rows if r["content_len"] > 0 or r["tool_calls"]) / max(len(ok_rows), 1), 4)
+            sum(1 for r in ok_rows if r.get("content_len", 0) > 0 or r["tool_calls"]) / max(len(ok_rows), 1), 4)
 
     return {
         "dataset": dataset,
@@ -208,12 +221,18 @@ def run_full_dataset(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Full-scale ticket benchmark (cloud).")
-    parser.add_argument("--model", required=True, choices=["glm-5.2", "hy3"])
+    parser.add_argument("--model", required=True,
+                        choices=["glm-5.2", "hy3", "deepseek-v4-flash", "deepseek-v4-pro-202606",
+                                 "deepseek-v4-flash-202605"])
     parser.add_argument("--workers", type=int, default=18, help="concurrent requests (each spawns one knot-cli)")
     parser.add_argument("--timeout", type=float, default=30.0, help="per-request timeout seconds")
     parser.add_argument("--max-retries", type=int, default=3)
     parser.add_argument("--resume", action="store_true", help="resume from checkpoint")
     parser.add_argument("--report-every", type=int, default=100)
+    parser.add_argument("--reasoning-effort", default="high",
+                        help="reasoning effort for the model (e.g. high/low/no_think; hy3 supports no_think)")
+    parser.add_argument("--base-url", default=BASE_URL, help="custom OpenAI-compatible base URL (default: knot-proxy)")
+    parser.add_argument("--api-key", default="", help="API key for the base URL (optional)")
     args = parser.parse_args()
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -225,7 +244,8 @@ def main() -> int:
         print(f"=== {dataset} ({args.model}, workers={args.workers}, timeout={args.timeout}) ===", flush=True)
         r = run_full_dataset(
             args.model, dataset, args.workers, args.timeout, args.max_retries, ckpt, args.resume,
-            report_every=args.report_every,
+            report_every=args.report_every, reasoning_effort=args.reasoning_effort,
+            base_url=args.base_url, api_key=args.api_key,
         )
         results[dataset] = r
         print(json.dumps(r, ensure_ascii=False, indent=2), flush=True)

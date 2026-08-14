@@ -12,7 +12,6 @@ from src.agents.main_agent import (
     _looks_like_escalation_query,
     _looks_like_kb_policy_query,
     _looks_like_ticket_query,
-    _maybe_clarify,
     _needs_context_clarification,
     _resolve_route,
 )
@@ -86,13 +85,6 @@ class TestEscalationSignals:
         assert _looks_like_escalation_policy_query("什么情况下必须升级给二线") is True
         assert _looks_like_escalation_query("什么情况下必须升级给二线") is False
 
-    def test_escalation_policy_question_routes_to_kb(self) -> None:
-        # E009: policy questions about escalation conditions answer from the KB.
-        question = "一线支持在什么情况下必须升级给二线"
-        is_ticket = _looks_like_ticket_query(question)
-        is_escalation = _looks_like_escalation_query(question)
-        assert _resolve_route(question, is_ticket, is_escalation) == "kb"
-
 
 class TestKBPolicyAndContext:
     def test_kb_policy_query(self) -> None:
@@ -105,14 +97,3 @@ class TestKBPolicyAndContext:
     def test_needs_context_clarification(self) -> None:
         assert _needs_context_clarification("这个账号问题") is True
         assert _needs_context_clarification("帮我看 TKT-1004 工单现在状态") is False
-
-    def test_escalation_intent_not_clarified_as_vague_kb(self) -> None:
-        # E035: escalation intent with a KB keyword must not trigger the
-        # context-poor KB clarification branch.
-        question = "客户要求马上处理计费异常 这个情况要不要升级给 billing_ops"
-        assert _maybe_clarify(question) is None
-
-    def test_vague_kb_still_clarified(self) -> None:
-        # Regression: pure vague KB input still asks for clarification.
-        assert _maybe_clarify("VPN 有点异常") is not None
-        assert _maybe_clarify("账号问题") is not None

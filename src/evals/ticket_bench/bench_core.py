@@ -71,21 +71,25 @@ _TOOLS = [
 _BASELINE_CACHE: dict[str, int] = {}
 
 
-def get_baseline_prompt_tokens(model: str, base_url: str = BASE_URL) -> int:
+def get_baseline_prompt_tokens(model: str, base_url: str = BASE_URL, reasoning_effort: str = "high",
+                               api_key: str = "") -> int:
     """Return the measured baseline prompt overhead for the model (cached)."""
     if model in _BASELINE_CACHE:
         return _BASELINE_CACHE[model]
     payload = {
         "model": model,
         "messages": [{"role": "user", "content": "hi"}],
-        "reasoning_effort": "high",
+        "reasoning_effort": reasoning_effort,
         "max_context_tokens": "1M",
         "user": "baseline-probe",
     }
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
     req = urllib.request.Request(
         f"{base_url}/chat/completions",
         data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
+        headers=headers,
         method="POST",
     )
     try:
@@ -151,6 +155,8 @@ def single_call(
     retries: int = 2,
     timeout: float = 600.0,
     base_url: str = BASE_URL,
+    reasoning_effort: str = "high",
+    api_key: str = "",
 ) -> dict[str, Any]:
     """Call the OpenAI-compatible proxy once and return a normalized record."""
     payload = {
@@ -161,14 +167,17 @@ def single_call(
         ],
         "tools": _TOOLS,
         "tool_choice": "auto",
-        "reasoning_effort": "high",
+        "reasoning_effort": reasoning_effort,
         "max_context_tokens": "1M",
         "user": f"bench-{model}-{sample.get('type', 'x')}",
     }
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
     req = urllib.request.Request(
         f"{base_url}/chat/completions",
         data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
+        headers=headers,
         method="POST",
     )
     for attempt in range(retries + 1):

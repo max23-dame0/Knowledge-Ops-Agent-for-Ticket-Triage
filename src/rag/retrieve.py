@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
+from src.repositories.kb_repository import KBRepository, get_kb_repository
+
 # Heavy dependencies (faiss / numpy / sentence-transformers) are imported
 # lazily inside the functions below. This keeps the import chain light so
 # agent routing logic can be imported and unit-tested without the RAG stack.
-from src.rag.embedding import resolve_embedding_model_name
-from src.repositories.kb_repository import KBRepository, get_kb_repository
 
-DEFAULT_MODEL_NAME = resolve_embedding_model_name()
+DEFAULT_MODEL_NAME = "all-MiniLM-L6-v2"
 DEFAULT_INDEX_PATH = "data/index/kb_index.faiss"
 DEFAULT_METADATA_PATH = "data/index/kb_metadata.json"
 
@@ -23,9 +23,6 @@ def retrieve_kb(
     use_hybrid: bool = True,
     min_score: float = 0.25,
     vector_weight: float = 0.7,
-    query_expansion: bool = True,
-    use_rerank: bool = True,
-    rerank_pool_size: int = 20,
 ) -> list[dict[str, object]]:
     """Retrieve the most relevant knowledge base passages for a query.
 
@@ -35,24 +32,8 @@ def retrieve_kb(
 
     Hybrid mode (default) blends vector similarity with a dependency-free
     BM25 keyword score and marks weak hits with `low_confidence=True` when the
-    fused score is below `min_score`. Rule-based query expansion (C3) is
-    applied to the search query by default; the original query is preserved
-    in the output contract and explicit queries are never rewritten.
-
-    CrossEncoder rerank (C1) refines the fused candidates and each hit gains
-    `rerank_score` plus a `strong_evidence` flag from the C2 relevance gate.
+    fused score is below `min_score`.
     """
-    search_query = query
-    if query_expansion:
-        from src.rag.query_expansion import expand_query
-
-        search_query = expand_query(query)
-    search_query = query
-    if query_expansion:
-        from src.rag.query_expansion import expand_query
-
-        search_query = expand_query(query)
-
     repo = _resolve_repository(index_path, metadata_path, model_name)
     if not repo.available():
         raise FileNotFoundError(
@@ -68,7 +49,7 @@ def retrieve_kb(
     from src.rag.hybrid import BM25Scorer, fuse_scores
 
     model = repo.get_embedding_model(model_name)
-    query_vector = model.encode([search_query], convert_to_numpy=True, show_progress_bar=False)
+    query_vector = model.encode([query], convert_to_numpy=True, show_progress_bar=False)
     query_vector = np.asarray(query_vector, dtype="float32")
 
     index = repo.get_index()
@@ -83,7 +64,7 @@ def retrieve_kb(
     bm25 = None
     if use_hybrid:
         bm25 = BM25Scorer([item["text"] for item in metadata])
-        bm25_scores = bm25.score_normalized(search_query)
+        bm25_scores = bm25.score_normalized(query)
 
     candidates: list[tuple[float, int]] = []
     for item_index, vector_score in vector_scores_by_index.items():
@@ -94,32 +75,18 @@ def retrieve_kb(
         candidates.append((fused, item_index))
     candidates.sort(key=lambda pair: pair[0], reverse=True)
 
-    pool_size = min(max(rerank_pool_size, top_k), len(candidates))
-    pool = [
-        {
-            "source_title": metadata[item_index]["source_title"],
-            "passage": metadata[item_index]["text"],
-            "score": round(fused_score, 4),
-            "low_confidence": bool(fused_score < min_score),
-        }
-        for fused_score, item_index in candidates[:pool_size]
-    ]
-
-    if use_rerank:
-        from src.rag.relevance_gate import classify_confidence
-        from src.rag.rerank import rerank_candidates
-
-        results = rerank_candidates(search_query, pool, top_k=top_k)
-        for item in results:
-            item["passage"] = _truncate_passage(str(item["passage"]), passage_max_chars)
-            item["strong_evidence"] = classify_confidence(item.get("rerank_score")) == "strong"
-        return results
-
     results: list[dict[str, object]] = []
-    for item in pool[:top_k]:
-        item["passage"] = _truncate_passage(str(item["passage"]), passage_max_chars)
-        item["strong_evidence"] = False
-        results.append(item)
+    for fused_score, item_index in candidates[:top_k]:
+        item = metadata[item_index]
+        results.append(
+            {
+                "source_title": item["source_title"],
+                "passage": _truncate_passage(item["text"], passage_max_chars),
+                "score": round(fused_score, 4),
+                "low_confidence": bool(fused_score < min_score),
+            }
+        )
+
     return results
 
 

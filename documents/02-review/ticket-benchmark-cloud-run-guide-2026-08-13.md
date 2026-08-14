@@ -1,15 +1,3 @@
----
-doc_id: REV-005
-title: "企业工单数据集评测 — 云环境运行指南"
-category: "review"
-role: "[Delta]"
-status: "published"
-date: "2026-08-13"
-author: "knowledge-ops-agent 团队"
-tags: ["ticket-benchmark", "cloud-run", "guide", "evaluation"]
-related: []
----
-
 # 企业工单数据集评测 — 云环境运行指南
 
 > **用途**：在 32 核 / 64GB 云主机上全量评测（Tobi-Bueck 20k + ITSM 900）hy3 与 glm-5.2 两个模型
