@@ -26,7 +26,7 @@
 | C4 | 检索评测集 + recall@k/MRR 基准 | C1 | ✅ 已提交（c90a323，8 单测+基线报告） | recall@1 0.9→1.0 / MRR 0.95→1.0 | - |
 | C5 | 语义分块 | C1-C4 | ⏸ 暂缓（计划可选） | - | - |
 | D1 | semantic grader（三维质量评分） | 无 | ✅ 已提交（d761314，5 单测 mock） | pytest；真实端点比对待做 | - |
-| D2 | judge 校准报告 | D1 | ⬜ | 一致性≥85% | 需用户人工标注 |
+| D2 | judge 校准报告 | D1 | ✅ 已提交（9807277）：严格 66.7% / 宽松 88.9%，**judge 不启用**（<85%）；根因 evidence_support 盲评（judge prompt 缺 evidence 输入） | 修复 judge 输入后重新校准 | 修 grade() 传 evidence |
 | D3 | 真实工单样本纳入回归集 | B(云) | ⏸ 挂起 | - | 等方向 B |
 
 ### 历史看板（已完成）
