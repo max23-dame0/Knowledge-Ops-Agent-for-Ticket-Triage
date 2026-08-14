@@ -143,7 +143,16 @@ def _summary(results: list[dict[str, Any]]) -> dict[str, Any]:
         "oos_count": len(oos),
         "oos_refusal_or_clarify_rate": round(sum(r["refused"] for r in oos) / max(len(oos), 1), 4),
         "oos_fabrication_risk": round(
-            sum(1 for r in oos if r["route"] not in ("refuse", "clarify", "error") and r["evidence_count"] == 0)
+            # A sample counts as fabrication risk only when it neither refused
+            # (route OR conclusion markers) nor grounded on any evidence. An
+            # LLM self-refusal with route=kb must not inflate the risk metric.
+            sum(
+                1
+                for r in oos
+                if r["route"] not in ("refuse", "clarify", "error")
+                and not r["refused"]
+                and r["evidence_count"] == 0
+            )
             / max(len(oos), 1),
             4,
         ),

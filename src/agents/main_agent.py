@@ -606,6 +606,10 @@ def _resolve_route(user_input: str, is_ticket_query: bool, is_escalation_query: 
     """
     if _looks_like_kb_policy_query(user_input):
         return "kb"
+    # Escalation policy questions ("什么情况下必须升级给二线") answer from
+    # the KB; routing them to clarify makes the KB policy doc unreachable.
+    if _looks_like_escalation_policy_query(user_input):
+        return "kb"
     # Bare policy questions ("sla 首次响应时限是多少") without ticket/escalation
     # markers are KB questions too; keep them out of the clarify fallback.
     if any(hint in user_input for hint in KB_POLICY_HINTS):
@@ -798,7 +802,7 @@ def _maybe_clarify(user_input: str) -> AgentAnswer | None:
     if _looks_like_kb_policy_query(user_input):
         return None
 
-    if _looks_like_context_poor_kb_query(user_input):
+    if _looks_like_context_poor_kb_query(user_input) and not _looks_like_escalation_query(user_input):
         return AgentAnswer(
             answer="我需要更多信息才能帮你处理。",
             conclusion="我需要更多信息才能帮你处理。",
@@ -835,7 +839,7 @@ def _maybe_clarify(user_input: str) -> AgentAnswer | None:
         )
 
     if any(keyword in user_input for keyword in KB_KEYWORDS):
-        if _looks_like_context_poor_kb_query(user_input):
+        if _looks_like_context_poor_kb_query(user_input) and not _looks_like_escalation_query(user_input):
             return AgentAnswer(
                 answer="我需要更多信息才能帮你处理。",
                 conclusion="我需要更多信息才能帮你处理。",
