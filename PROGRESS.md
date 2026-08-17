@@ -13,12 +13,13 @@
 | 2 | 决策回放语料库（replay_store + replay_runner + golden promote） | 已完成 | ✅ 已提交（c4fda41） | golden 66 条真实轨迹,CI 已加 replay 检查 | 无 |
 | 3 | 澄清决策权移交 LLM（措辞启发式→advisory hints,零事实确定性澄清） | 已完成 | ✅ 已提交（2432a7e） | offline eval 66/66 全指标 100% | 无 |
 | 4 | 历史任务（本地评测/企业就绪度/harness 等,见下） | 已完成 | ✅ 已提交 | - | 无 |
+| 5 | 备用 LLM 端点配置（sub2api.test.tmeoa.com：LLM_ALT_* 五变量 + config.py 读取函数 + 9 条测试） | 已完成 | 🟡 已验证待提交 | 本轮收尾 commit（.env 不入库） | 无 |
 
 ## 当前验证状态
 
 | 检查项 | 状态 |
 |------|------|
-| `pytest tests/` | ✅ **204 passed / 0 skipped**（2026-08-17） |
+| `pytest tests/` | ✅ **213 passed / 0 skipped**（2026-08-17） |
 | `python -m src.evals.run_evals --mode offline`（本地端点,66 条） | ✅ **route/tool/clarification/grounding/refusal 全指标 100%**（2026-08-17） |
 | 真实 LLM 端到端冒烟 | ✅ kb / ticket / escalation / clarify / refuse 五路由全通过（2026-08-17） |
 | `python -m src.evals.replay_runner replay` | ✅ 66/66 golden 回放一致（无需 LLM） |
@@ -35,6 +36,7 @@
 |------|:--:|------|------|
 | 阶段 1+2 重构（金字塔 + replay + clarify 移交） | ✅ 已提交（c4fda41 / 313e541 / 2432a7e） | 已完成 | 1-3 |
 | PROGRESS / DECISIONS 文档同步 | 🟡 已验证待提交 | 本轮收尾 commit | - |
+| 备用 LLM 端点配置（.env / .env.example / config.py / README×2 / tests/test_config.py） | 🟡 已验证待提交（.env 不入库） | 本轮收尾 commit | 5 |
 
 ## 整体进度
 
@@ -56,6 +58,7 @@
 
 | 日期 | 做了什么（一行） | 验证 | 下一步 | 日志 |
 |------|---------|:--:|------|
+| 2026-08-17 | 新增备用 LLM 端点配置：.env 加 LLM_ALT_*（sub2api.test.tmeoa.com + key + flash/pro 两模型），config.py 加 get_alt_openai_settings/get_alt_pro_model_id + 环境变量名常量，README×2 同步，新增 tests/test_config.py | pytest 213 passed / 备用端点 curl 验证通过（/v1/models 2 模型 + 对话 OK） | 本轮收尾 commit | 本会话 |
 | 2026-08-13 | 本地端点工具型评测：反代支持 tools 后跑 regression 11 条 + offline 66 条，报告落盘 documents/02-review/local-endpoint-tool-eval-report-2026-08-13.md | regression 11/11（100%）、offline route 97.0%/grounding 100%/refusal 98.5% | E009/E021/E049 三点可选优化 | `.codebuddy/memory/2026-08-13.md` |
 | 2026-08-12 | 外部数据集评测闭环：下载 deepset/prompt-injections + clinc_oos → 评测脚本 → 初测（注入拒答 80%、幻觉敞口 96.7%）→ P1 加固（fallback clarify + 多语种注入正则）→ 复测（注入拒答 100%、幻觉风险 0、规则层拦截 3.7x） | pytest 171 passed / 评测全指标改善 | P2 建议可选；Docker/K8s 部署验证 | `.codebuddy/memory/2026-08-12.md` |
 | 2026-08-12 | 端到端验证闭环：安装 faiss 全依赖 → pytest 164/164 全绿 → HNSW 索引重建 + 混合检索冒烟 → DeepSeek 端点 regression 11/11 → offline 66 用例评估（route 98.5%/grounding 100%/refusal 98.5%）→ 修复 E061-E066 乱码（原 git 版本即乱码） | 全链路 ✅ | 已完成 | `.codebuddy/memory/2026-08-12.md` |
