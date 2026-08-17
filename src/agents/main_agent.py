@@ -46,6 +46,9 @@ from src.agents.route_fn import (
     _looks_like_kb_policy_query as route_looks_like_kb_policy,
     _looks_like_ticket_query as route_looks_like_ticket,
     decide_route,
+    detect_clarify_signals,
+    looks_like_context_poor_kb_query,
+    needs_context_clarification,
 )
 from src.agents.trace import DecisionTrace, TraceRecorder
 from src.tools.escalation_tools import (
@@ -374,6 +377,7 @@ def _run_agent_inner(user_input: str) -> AgentAnswer:
         question=normalized,
         guardrail=guardrail,
         route_fn=route_decision.model_dump(),
+        clarify=detect_clarify_signals(normalized),
         plan=plan.model_dump(),
     )
     logger.info(
@@ -415,15 +419,28 @@ def _run_agent_inner(user_input: str) -> AgentAnswer:
         logger.info("response_summary=cache_hit | route:%s", cached.route)
         return cached
 
-    # L3 plan is advisory in this stage: inject the route hint into the LLM
-    # input exactly like the legacy pipeline did for escalation.
+    # L3 plan is advisory in this stage: inject route/clarify hints into the
+    # LLM input. The LLM makes the final route + clarify decision (L4); the
+    # deterministic layers only record evidence-backed proposals.
     agent_input = normalized
-    if route_decision.route == "escalation" and _has_strong_escalation_signal(normalized):
-        agent_input = (
-            "Route hint: this is an escalation suggestion request. Prefer create_escalation_draft first. "
-            "Only use search_kb or get_ticket_status if escalation facts are clearly missing.\n"
-            f"User question: {normalized}"
+    hints: list[str] = []
+    if route_decision.route == "escalation":
+        # Zero-fact escalation asks are deterministically clarified before the
+        # LLM; anything reaching here has enough content to draft from.
+        hints.append(
+            "Route hint: this is an escalation suggestion request. Call create_escalation_draft now, "
+            "using the user's own words as issue_summary (evidence may be empty). "
+            "The tool produces the draft; do not clarify before calling it."
         )
+    clarify_signals = detect_clarify_signals(normalized)
+    if clarify_signals["hint"]:
+        hints.append(
+            "Context hint: this request is context-poor (" + "; ".join(clarify_signals["reasons"]) + "). "
+            "Consider asking a short clarification question instead of guessing; "
+            "if the intended support task is already clear, answer directly."
+        )
+    if hints:
+        agent_input = "\n".join(hints) + f"\nUser question: {normalized}"
 
     if not _circuit_breaker.allow_request():
         logger.warning("circuit_open=true | failing fast for question=%s", normalized)
@@ -445,7 +462,14 @@ def _run_agent_inner(user_input: str) -> AgentAnswer:
 
     _circuit_breaker.record_success()
     elapsed_ms = int((time.monotonic() - started) * 1000)
-    response = _finalize_response(_coerce_agent_output(result.final_output), route=route_decision.route)
+    coerced = _coerce_agent_output(result.final_output)
+    # The LLM owns the final route (L4). A clarification counts only when the
+    # model both signals it AND called no tools: if it already retrieved or
+    # drafted, its observable behavior was answering, not clarifying.
+    final_route: str = route_decision.route
+    if (coerced.needs_clarification or coerced.clarification_question) and not _CURRENT_TOOL_CALLS:
+        final_route = "clarify"
+    response = _finalize_response(coerced, route=final_route)
     _response_cache.put(cache_key, response)
     trace.llm = {
         "tool_calls": list(_CURRENT_TOOL_CALLS),
@@ -691,7 +715,14 @@ def _maybe_refuse(user_input: str) -> AgentAnswer | None:
 
 
 def _maybe_clarify(user_input: str) -> AgentAnswer | None:
-    """Return a clarification question for vague KB, ticket, or escalation requests."""
+    """Return a clarification for verifiable missing facts only (legacy shim).
+
+    Deterministic clarification is limited to facts we can verify without
+    interpretation: empty input and a ticket query without a ticket_id.
+    Phrasing heuristics (context-poor KB, short escalation, vague markers)
+    are advisory hints passed to the LLM via detect_clarify_signals; the LLM
+    owns the final clarify decision (L4).
+    """
     if not user_input:
         return AgentAnswer(
             answer="我需要更多信息才能帮你处理。",
@@ -710,29 +741,10 @@ def _maybe_clarify(user_input: str) -> AgentAnswer | None:
             clarification_question="请描述问题内容、提供工单号，或说明是否需要升级建议。",
         )
 
+    # Strong escalation intent must never be clarified away, even when the
+    # phrasing contains ticket hints without an id.
     if _has_strong_escalation_signal(user_input):
         return None
-
-    if _looks_like_kb_policy_query(user_input):
-        return None
-
-    if _looks_like_context_poor_kb_query(user_input):
-        return AgentAnswer(
-            answer="我需要更多信息才能帮你处理。",
-            conclusion="我需要更多信息才能帮你处理。",
-            evidence=[],
-            next_action=["请补充具体症状、操作步骤或期望结果。"],
-            next_actions=["请补充具体症状、操作步骤或期望结果。"],
-            human_handoff=False,
-            should_handoff=False,
-            confidence=0.3,
-            tool_calls=[],
-            route="clarify",
-            clarified=True,
-            refused=False,
-            needs_clarification=True,
-            clarification_question="请补充具体症状、操作步骤或期望结果。",
-        )
 
     if _looks_like_ticket_query(user_input) and not _extract_ticket_id(user_input):
         return AgentAnswer(
@@ -752,27 +764,10 @@ def _maybe_clarify(user_input: str) -> AgentAnswer | None:
             clarification_question="请提供工单号，例如 TKT-1004。",
         )
 
-    if any(keyword in user_input for keyword in KB_KEYWORDS):
-        if _looks_like_context_poor_kb_query(user_input):
-            return AgentAnswer(
-                answer="我需要更多信息才能帮你处理。",
-                conclusion="我需要更多信息才能帮你处理。",
-                evidence=[],
-                next_action=["请补充具体症状、操作步骤或期望结果。"],
-                next_actions=["请补充具体症状、操作步骤或期望结果。"],
-                human_handoff=False,
-                should_handoff=False,
-                confidence=0.3,
-                tool_calls=[],
-                route="clarify",
-                clarified=True,
-                refused=False,
-                needs_clarification=True,
-                clarification_question="请补充具体症状、操作步骤或期望结果。",
-            )
-        return None
-
-    if _needs_context_clarification(user_input):
+    # Demonstrative-only requests ("这个问题需要升级吗", "这个 billing 的事")
+    # carry zero draftable facts; a deterministic clarify prevents the LLM
+    # from fabricating an escalation draft from nothing.
+    if needs_context_clarification(user_input):
         return AgentAnswer(
             answer="我需要更多信息才能帮你处理。",
             conclusion="我需要更多信息才能帮你处理。",
@@ -790,6 +785,8 @@ def _maybe_clarify(user_input: str) -> AgentAnswer | None:
             clarification_question="请补充具体症状、影响对象、影响范围或工单号。",
         )
 
+    # Very short escalation asks without a strong signal cannot produce a
+    # meaningful draft either (legacy parity).
     if _looks_like_escalation_query(user_input) and len(user_input.strip()) < 12 and not _has_strong_escalation_signal(user_input):
         return AgentAnswer(
             answer="我需要更多信息才能帮你处理。",
@@ -808,76 +805,17 @@ def _maybe_clarify(user_input: str) -> AgentAnswer | None:
             clarification_question="请补充问题摘要、影响范围或证据。",
         )
 
-    vague_markers = ("怎么办", "坏了", "有问题", "不行", "异常")
-    if any(marker in user_input for marker in vague_markers):
-        has_kb_topic = any(keyword in user_input for keyword in KB_KEYWORDS)
-        if has_kb_topic:
-            return None
-        return AgentAnswer(
-            answer="我需要更多信息才能帮你处理。",
-            conclusion="我需要更多信息才能帮你处理。",
-            evidence=[],
-            next_action=["请说明这是知识库问题、工单查询还是升级建议，并补充关键词或工单号。"],
-            next_actions=["请说明这是知识库问题、工单查询还是升级建议，并补充关键词或工单号。"],
-            human_handoff=False,
-            should_handoff=False,
-            confidence=0.25,
-            tool_calls=[],
-            route="clarify",
-            clarified=True,
-            refused=False,
-            needs_clarification=True,
-            clarification_question="请说明这是知识库问题、工单查询还是升级建议，并补充关键词或工单号。",
-        )
-
     return None
 
 
 def _needs_context_clarification(user_input: str) -> bool:
-    """Return True for theme-known but context-poor requests that should be clarified first."""
-    if _has_strong_escalation_signal(user_input):
-        return False
-
-    lowered = user_input.lower().strip()
-    if not lowered:
-        return False
-
-    context_poor_terms = (
-        "账号问题",
-        "这个账号问题",
-        "这个 billing",
-        "billing 的事",
-        "billing问题",
-        "这个单子有没有进展",
-        "想问下这个单子有没有进展",
-        "这个问题需要升级吗",
-        "发票这里有问题",
-        "这个问题现在进度如何",
-        "这个问题进度如何",
-    )
-    return any(term in lowered for term in context_poor_terms)
+    """Return True for theme-known but context-poor requests (advisory only)."""
+    return needs_context_clarification(user_input)
 
 
 def _looks_like_context_poor_kb_query(user_input: str) -> bool:
-    """Return True for short KB-topic questions that still lack enough actionable detail."""
-    lowered = user_input.lower().strip()
-    if not any(keyword.lower() in lowered for keyword in KB_KEYWORDS):
-        return False
-    explicit_action_terms = ("怎么", "如何", "多久", "申请", "补开", "重置", "谁可以", "能否", "可以", "在哪", "登录失败")
-    if any(term in user_input for term in explicit_action_terms):
-        return False
-    vague_phrases = (
-        "有点异常",
-        "这里有问题",
-        "帮我看下",
-        "帮我看一下",
-        "账号问题",
-        "这个账号问题",
-        "有问题",
-        "不对劲",
-        "异常",
-    )
-    return any(phrase in lowered for phrase in vague_phrases)
+    """Return True for short KB-topic questions lacking actionable detail (advisory only)."""
+    return looks_like_context_poor_kb_query(user_input)
 
 
 
@@ -901,8 +839,13 @@ def _coerce_agent_output(final_output: Any) -> AgentAnswer:
 
 
 def _strip_think_blocks(text: str) -> str:
-    """Remove provider reasoning tags from raw model output."""
-    return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL | re.IGNORECASE)
+    """Remove provider reasoning tags and leaked special tokens from raw output."""
+    cleaned = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL | re.IGNORECASE)
+    # Remove leaked sentence-boundary tokens seen from some providers, e.g.
+    # ＜｜begin▁of▁sentence｜＞ (full-width brackets/bars, U+2581 underscore).
+    cleaned = re.sub(r"[<＜][｜|]?begin[▁_ ｜|]*of[▁_ ｜|]*sentence[｜|]?[>＞]", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"<\s*begin\s*of\s*sentence\s*>", "", cleaned, flags=re.IGNORECASE)
+    return cleaned
 
 
 
@@ -917,16 +860,42 @@ def _extract_json_object(text: str) -> str | None:
 
 
 def _parse_text_response(text: str) -> AgentAnswer:
-    """Parse a plain-text model answer into the response schema as a fallback."""
-    conclusion = _search_value(text, [r"结论[：:][ \t]*(.+)", r"\*\*结论\*\*[：:]?[ \t]*(.+)"])
-    confidence_text = _search_value(text, [r"置信度[：:][ \t]*([0-9.]+)", r"\*\*置信度\*\*[：:]?[ \t]*([0-9.]+)"])
+    """Parse a plain-text model answer into the response schema as a fallback.
+
+    Tries JSON-fragment field extraction first (tolerates mildly malformed
+    JSON such as unescaped quotes), then falls back to Chinese-label regexes.
+    """
+    conclusion = _search_value(
+        text,
+        [
+            r'"conclusion"\s*:\s*"([^"]*)"',
+            r"\*\*conclusion\*\*[：:]\s*(.+)",
+            r"结论[：:][ \t]*(.+)",
+            r"\*\*结论\*\*[：:]?[ \t]*(.+)",
+        ],
+    )
+    confidence_text = _search_value(
+        text,
+        [
+            r'"confidence"\s*:\s*([0-9.]+)',
+            r"置信度[：:][ \t]*([0-9.]+)",
+            r"\*\*置信度\*\*[：:]?[ \t]*([0-9.]+)",
+        ],
+    )
     handoff_text = _search_value(
         text,
-        [r"是否需要转人工[：:][ \t]*(.+)", r"\*\*是否需要转人工\*\*[：:]?[ \t]*(.+)"],
+        [
+            r'"should_handoff"\s*:\s*(true|false)',
+            r"是否需要转人工[：:][ \t]*(.+)",
+            r"\*\*是否需要转人工\*\*[：:]?[ \t]*(.+)"],
     )
+    needs_clarification = _extract_json_bool(text, "needs_clarification", default=False)
     clarification_text = _search_value(
         text,
-        [r"澄清问题[：:][ \t]*(.+)", r"\*\*澄清问题\*\*[：:]?[ \t]*(.+)"],
+        [
+            r'"clarification_question"\s*:\s*"([^"]*)"',
+            r"澄清问题[：:][ \t]*(.+)",
+            r"\*\*澄清问题\*\*[：:]?[ \t]*(.+)"],
     )
 
     next_actions = re.findall(r"(?:^|\n)\d+\.\s*([^\n]+)", text)
@@ -973,9 +942,9 @@ def _parse_text_response(text: str) -> AgentAnswer:
         confidence=max(0.0, min(confidence, 1.0)),
         tool_calls=[],
         route="kb",
-        clarified=clarification_text is not None,
+        clarified=clarification_text is not None or needs_clarification,
         refused=False,
-        needs_clarification=clarification_text is not None,
+        needs_clarification=clarification_text is not None or needs_clarification,
         clarification_question=clarification_text,
     )
 
@@ -988,6 +957,14 @@ def _search_value(text: str, patterns: list[str]) -> str | None:
         if match:
             return match.group(1).strip()
     return None
+
+
+def _extract_json_bool(text: str, key: str, default: bool = False) -> bool:
+    """Extract a JSON boolean field value (tolerant of surrounding noise)."""
+    match = re.search(rf'"{key}"\s*:\s*(true|false)', text, flags=re.IGNORECASE)
+    if match is None:
+        return default
+    return match.group(1).lower() == "true"
 
 
 

@@ -14,9 +14,10 @@ alwaysApply: false
 
 1. **单决策 owner**：顶层路由（kb/ticket/escalation/clarify/refuse）只能由 `main_agent` 决定；`retrieval_agent` 只做检索证据规范化，不得拥有路由/决策逻辑。why：架构决策 D004；when：修改 agent 职责时；when_remove：D004 变更时。
 2. **输出必须走 `_finalize_response` 规范化**：route 归一化（clarification→clarify、refusal→refuse）、兼容别名填充（next_actions/should_handoff）。why：UI/eval 依赖稳定字段；when：任何返回路径；when_remove：接口层重构时。
-3. **模型输出必须容忍**：`_coerce_agent_output` 兜底链路（AgentAnswer → dict → JSON 提取 → 文本 regex）不得移除。why：第三方提供商结构化输出不稳定（tech-traps）；when：修改输出解析时；when_remove：模型保证 schema 时。
-4. **预检顺序固定**：`_maybe_refuse` → `_maybe_clarify` → LLM 运行，不得交换。why：安全拒答优先于一切；when：改 run_agent 流程时；when_remove：规则层重构时。
-5. **关键词规则与提示词同步**：修改 `MAIN_AGENT_INSTRUCTIONS` 时必须同步检查 hints 元组（KB_KEYWORDS/TICKET_HINTS/ESCALATION_HINTS/REFUSAL_KEYWORDS 等）。why：规则层与提示词双轨，不同步会互相打架；when：任何路由逻辑变更；when_remove：双轨制废弃时。
+3. **模型输出必须容忍**：`_coerce_agent_output` 兜底链路（AgentAnswer → dict → JSON 提取 → 文本 regex）不得移除；`_strip_think_blocks` 需清理 provider 泄漏的 `<think>` 与 sentence-boundary token（`＜｜begin▁of▁sentence｜＞`）。why：第三方提供商结构化输出不稳定（tech-traps）；when：修改输出解析时；when_remove：模型保证 schema 时。
+4. **预检顺序固定**：L1 guardrail 硬拒答 → `_maybe_clarify` 零事实澄清（空输入 / ticket 缺 id / 纯指代无事实）→ LLM 运行，不得交换。why：安全拒答优先于一切；when：改 run_agent 流程时；when_remove：规则层重构时。
+5. **澄清决策权归 LLM（D008 细化）**：措辞启发式（`detect_clarify_signals` 的 context_poor_kb 等）只作为输入 hint 注入，不直接裁决；确定性层只澄清「可验证事实缺失」。LLM 决定 clarify 时（`needs_clarification` 且无工具调用）route 覆盖为 clarify。why：避免规则层与模型双重决策冲突；when：任何 clarify 行为变更；when_remove：D008 变更时。
+6. **关键词规则与提示词同步**：修改 `MAIN_AGENT_INSTRUCTIONS` 时必须同步检查 hints 元组（KB_KEYWORDS/TICKET_HINTS/ESCALATION_HINTS/REFUSAL_KEYWORDS 等）。why：规则层与提示词双轨，不同步会互相打架；when：任何路由逻辑变更；when_remove：双轨制废弃时。
 
 ## 代码风格
 

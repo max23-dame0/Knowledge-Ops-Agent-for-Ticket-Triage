@@ -44,7 +44,7 @@ class TestClarification:
             "这个问题需要升级吗",
         ],
     )
-    def test_clarifies_vague_inputs(self, question: str) -> None:
+    def test_clarifies_zero_fact_or_missing_id_inputs(self, question: str) -> None:
         response = _maybe_clarify(question)
         assert response is not None
         assert response.route == "clarify"
@@ -52,6 +52,18 @@ class TestClarification:
         assert response.needs_clarification is True
         assert response.clarification_question
         assert response.tool_calls == []
+
+    @pytest.mark.parametrize(
+        "question",
+        [
+            "VPN 有点异常",
+            "VPN 登录失败提示 token 过期怎么办",
+        ],
+    )
+    def test_phrasing_heuristics_are_llm_decisions_not_rules(self, question: str) -> None:
+        # KB-topic phrasing questions go to the LLM (L4) with advisory hints;
+        # the deterministic layer only handles zero-fact and missing-id asks.
+        assert _maybe_clarify(question) is None
 
     @pytest.mark.parametrize(
         "question",

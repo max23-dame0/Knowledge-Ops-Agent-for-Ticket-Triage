@@ -206,3 +206,93 @@ def decide_route(user_input: str) -> RouteDecision:
 def resolve_route(user_input: str) -> str:
     """Compatibility wrapper returning the proposed route name only."""
     return decide_route(user_input).route
+
+
+# --- clarification signal detection (advisory, not decisive) ---
+#
+# These helpers answer "what clarification hints fire?" rather than "must we
+# clarify?". The LLM makes the final clarify decision (L4); the deterministic
+# precheck only handles verifiable missing facts (empty input, missing
+# ticket_id). Keeping the phrase lists here makes them testable and keeps
+# main_agent free of heuristic keyword branches.
+
+CONTEXT_POOR_TERMS = (
+    "账号问题",
+    "这个账号问题",
+    "这个 billing",
+    "billing 的事",
+    "billing问题",
+    "这个单子有没有进展",
+    "想问下这个单子有没有进展",
+    "这个问题需要升级吗",
+    "发票这里有问题",
+    "这个问题现在进度如何",
+    "这个问题进度如何",
+)
+
+VAGUE_PHRASES_KB = (
+    "有点异常",
+    "这里有问题",
+    "帮我看下",
+    "帮我看一下",
+    "账号问题",
+    "这个账号问题",
+    "有问题",
+    "不对劲",
+    "异常",
+)
+
+VAGUE_MARKERS = ("怎么办", "坏了", "有问题", "不行", "异常")
+
+EXPLICIT_ACTION_TERMS = ("怎么", "如何", "多久", "申请", "补开", "重置", "谁可以", "能否", "可以", "在哪", "登录失败")
+
+
+def looks_like_context_poor_kb_query(user_input: str) -> bool:
+    """Return True for short KB-topic questions that still lack actionable detail."""
+    lowered = user_input.lower().strip()
+    if not any(keyword.lower() in lowered for keyword in KB_KEYWORDS):
+        return False
+    if any(term in user_input for term in EXPLICIT_ACTION_TERMS):
+        return False
+    return any(phrase in lowered for phrase in VAGUE_PHRASES_KB)
+
+
+def needs_context_clarification(user_input: str) -> bool:
+    """Return True for theme-known but context-poor requests."""
+    if _has_strong_escalation_signal(user_input):
+        return False
+    lowered = user_input.lower().strip()
+    if not lowered:
+        return False
+    return any(term in lowered for term in CONTEXT_POOR_TERMS)
+
+
+def detect_clarify_signals(user_input: str) -> dict:
+    """Return advisory clarification hints for the LLM (never decisive)."""
+    if not user_input:
+        return {"hint": False, "reasons": [], "matched": []}
+    matched: list[str] = []
+    reasons: list[str] = []
+
+    # Escalation intent wins: asking whether to escalate is a concrete action
+    # request, not a context-poor KB question.
+    is_escalation_intent = _looks_like_escalation_query(user_input)
+
+    if needs_context_clarification(user_input):
+        matched.append("context_poor_theme")
+        reasons.append("主题明确但缺少关键上下文(影响对象/范围/单号)")
+    if not is_escalation_intent and looks_like_context_poor_kb_query(user_input):
+        matched.append("context_poor_kb")
+        reasons.append("KB 主题问题缺少具体症状或操作步骤")
+    if is_escalation_intent and len(user_input.strip()) < 12 and not _has_strong_escalation_signal(user_input):
+        matched.append("escalation_short")
+        reasons.append("升级意图但缺少问题摘要与影响范围")
+    if (
+        not is_escalation_intent
+        and any(marker in user_input for marker in VAGUE_MARKERS)
+        and not any(keyword in user_input for keyword in KB_KEYWORDS)
+    ):
+        matched.append("vague_no_topic")
+        reasons.append("模糊表述且无明确支持主题")
+
+    return {"hint": bool(matched), "reasons": reasons, "matched": matched}

@@ -24,6 +24,7 @@ class DecisionTrace(BaseModel):
     stage: str = Field(default="decision", description="Trace stage marker.")
     guardrail: dict[str, Any] = Field(default_factory=dict)
     route_fn: dict[str, Any] = Field(default_factory=dict)
+    clarify: dict[str, Any] = Field(default_factory=dict)
     plan: dict[str, Any] = Field(default_factory=dict)
     llm: dict[str, Any] = Field(default_factory=dict)
     final: dict[str, Any] = Field(default_factory=dict)

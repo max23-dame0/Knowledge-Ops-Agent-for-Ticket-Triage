@@ -20,6 +20,12 @@ class TestStripThinkBlocks:
     def test_no_think_block(self) -> None:
         assert _strip_think_blocks("正常回答") == "正常回答"
 
+    def test_removes_leaked_sentence_tokens(self) -> None:
+        text = "建议立即升级处理<｜begin▁of▁sentence｜><｜begin▁of▁sentence｜>"
+        cleaned = _strip_think_blocks(text)
+        assert "begin" not in cleaned
+        assert "升级处理" in cleaned
+
 
 class TestExtractJsonObject:
     def test_extracts_json(self) -> None:
