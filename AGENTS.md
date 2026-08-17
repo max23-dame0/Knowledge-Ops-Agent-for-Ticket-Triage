@@ -13,6 +13,8 @@ streamlit run app.py                                    # 启动 Streamlit UI
 .venv\Scripts\python.exe -m src.agents.main_agent "VPN 登录失败提示 token 过期怎么办"   # CLI 运行
 .venv\Scripts\python.exe -m src.evals.run_evals --mode offline     # 离线评估
 .venv\Scripts\python.exe -m src.evals.error_analysis    # 最新评估结果错误分析
+.venv\Scripts\python.exe -m src.evals.replay_runner replay    # 离线回放 golden 决策（无需 LLM）
+.venv\Scripts\python.exe -m src.evals.replay_runner promote   # 把真实运行轨迹晋升为 golden
 ```
 
 ## 会话工作流

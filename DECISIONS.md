@@ -59,3 +59,20 @@
 - **否决方案**：依赖 SDK tracing（第三方提供商下不稳定）
 - **回退/可逆方案**：tracing 开关是配置项，随时可恢复
 - **约束**：新增关键流程时同步补日志，保持可观测性
+
+## D008: 五层控制金字塔 + 决策回放语料库
+
+- **日期**：2026-08-17
+- **决策**：将 main_agent 重构为五层控制金字塔（L1 硬安全闸 guardrails → L2 路由函数 route_fn → L3 工具预算 plan → L4 LLM 决策 → L5 决策轨迹 trace）；所有决策写入 `data/replay/sessions/<run_id>.jsonl`，人工审核后晋升为 `data/replay/golden/samples.jsonl`
+- **原因**：(1) 原实现路由由 700+ 行关键词 if/elif 堆与 LLM 双重决策，冲突面靠 prompt 协商；(2) 评测调真实 LLM，结果一次性不可复现；(3) 决策无证据链，不可解释、不可回放
+- **否决方案**：一次性删除全部规则并完全交给 LLM（无法离线评估、硬安全不可控）
+- **回退/可逆方案**：阶段 1 冻结现有行为——旧函数 `_resolve_route`/`_maybe_refuse`/`_maybe_clarify` 保留为兼容 shim，`decide_route` 与旧 `_resolve_route` 在 eval_set 66 条上零差异；回放器可在 golden 基线上 diff 每次改动
+- **约束**：硬安全规则（g_injection/g_legacy_refusal_keywords/g_bulk_data_export）永不交给 LLM；LLM 最终裁决仅基于工具证据；工具证据优先于模型自述证据
+
+## D009: retrieval_agent 更名 retrieval_grader
+
+- **日期**：2026-08-17
+- **决策**：`retrieval_agent` 模块更名为 `retrieval_grader`（`RetrievalAgent = RetrievalGrader` 别名保留），明确该层不拥有路由/决策权，只负责检索 + 证据质量分级
+- **原因**：原名暗示 agent 身份，与 D004 单决策者架构矛盾，误导读者以为存在"检索子 agent"
+- **回退/可逆方案**：模块内别名保留，调用方无需改动
+- **约束**：任何"agent"命名模块必须真正持有 LLM 决策权，否则使用 grader/planner/tool 等词

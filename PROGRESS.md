@@ -1,6 +1,6 @@
 # PROGRESS — 项目当前进度
 
-> 最后更新：2026-08-12
+> 最后更新：2026-08-17
 > **上班必读**：本文件 + DECISIONS.md
 
 ## 活跃任务看板（WIP 显式登记）
@@ -9,30 +9,20 @@
 
 | # | 任务 | 阶段 | 状态 | 下一步 | 阻塞 |
 |:--:|------|------|:--:|------|------|
-| 1 | 本地端点工具型评测（regression 11 + offline 66，本地反代支持 tools 后） | 已完成 | ✅ 已提交（报告落盘） | regression 11/11、offline route 97%、grounding 100% | 无 |
-| 2 | 本地反代 tools 支持验证（用户修改后） | 已完成 | ✅ 五路由工具调用全部正常 | 无 | 无 |
-| 3 | 扩大覆盖评测（253 条全量：注入 60/良性 56 全量 + JailbreakBench 100 + OOS 30 + 域内 7，本地端点） | 已完成 | ✅ 已提交（863ddb0） | 注入 100% / Jailbreak 100% / OOS 100% 全绿 | 无 |
-| 4 | 本地 API 接入（knot-proxy 优先，远程保留，--endpoint 切换） | 已完成 | ✅ 已提交（863ddb0，.env 本地配置不入库） | 本地端点可全量替代远程（含工具型） | 无 |
-| 3 | 外部数据集评测（prompt-injections/clinc_oos 下载 + 评测脚本 + 报告） | 已完成 | ✅ 已提交（dc81f39/fd25830） | P2 建议（空证据降级/误伤细分）可选推进 | 无 |
-| 4 | P1 加固（fallback kb→clarify + 多语种注入检测） | 已完成 | ✅ 已提交（dc81f39） | 复测：注入拒答 100%、幻觉风险 0 | 无 |
-| 3 | 企业就绪度修复 Phase A（密钥清理/单测/CI） | 已完成 | ✅ 已提交（afe838a/b1ed522/9dab6ed） | 无 | 无 |
-| 4 | 企业就绪度修复 Phase B（日志/Repository/熔断缓存/API服务/部署） | 已完成 | ✅ 已提交（16d3e32..4c27fe8） | 部署验证需真实环境 | 无 |
-| 5 | 企业就绪度修复 Phase C（混合检索/安全闸/审计/多轮会话） | 已完成 | ✅ 已提交（d7b593d..3a37515） | CI 全依赖跑 faiss 单测 | 无 |
-| 6 | 企业就绪度差距分析文档 | 已完成 | ✅ 已提交（含修复完成记录） | 无 | 无 |
-| 7 | Harness 环境首次搭建（AGENTS/MEMORY/PROGRESS/DECISIONS/rules/handoff） | 已完成 | ✅ 已提交（3a545fa） | 无 | 无 |
-| 8 | 核心功能基线（main_agent + RAG + tools + eval） | 已完成 | ✅ 已提交（git log: 0c254fa 及之前） | 无 | 无 |
+| 1 | 五层控制金字塔重构（guardrails/route_fn/contracts/trace + main_agent 管线） | 已完成 | ✅ 已提交 | 真实 LLM 5 路由冒烟全通过 | 无 |
+| 2 | 决策回放语料库（replay_store + replay_runner + golden promote） | 已完成 | ✅ 已提交 | golden 已含 5 条真实轨迹,CI 已加 replay 检查 | 无 |
+| 3 | 历史任务（本地评测/企业就绪度/harness 等,见下） | 已完成 | ✅ 已提交 | - | 无 |
 
 ## 当前验证状态
 
 | 检查项 | 状态 |
 |------|------|
-| `pytest tests/`（**164 passed / 0 skipped**，faiss 重依赖已装真跑） | ✅ 已验证（2026-08-12） |
-| `ruff check src tests app.py` | ✅ 0 错误（2026-08-12） |
-| `.venv\Scripts\python.exe -m src.rag.build_index`（HNSW 默认，19 chunks） | ✅ 已重建 + 检索冒烟通过（vpn→vpn_login 0.69 等） |
-| `... run_evals --mode regression`（11 用例，DeepSeek 端点） | ✅ 11/11 100%（2026-08-12） |
-| `... run_evals --mode offline`（66 用例含 6 对抗） | ✅ route 98.5% / grounding 100% / refusal 98.5%（2026-08-12） |
-| FastAPI 冒烟（/healthz、/agent/ask） | ✅ TestClient 已验证；真实部署待执行 |
-| git status / 未提交清单 | ✅ 已提交（e5aee58 起工作区干净） |
+| `pytest tests/` | ✅ **195 passed / 0 skipped**（2026-08-17,新增 route_fn/replay 24 例） |
+| 真实 LLM 端到端冒烟（本地端点） | ✅ kb / ticket / escalation / clarify / refuse 五路由全通过（2026-08-17） |
+| `python -m src.evals.replay_runner replay` | ✅ 5/5 golden 回放一致（2026-08-17,无需 LLM） |
+| `decide_route` vs 旧 `_resolve_route`（eval_set 66 条） | ✅ 0 差异（行为冻结验证） |
+| eval_set E009（升级政策→kb）路由修复 | ✅ 新增 escalation_policy_query 分支 |
+| `data/replay/sessions/` 已加入 .gitignore | ✅ |
 | 当前 blocker | 无 |
 
 ## 未提交改动清单（与 git 强一致）
@@ -41,8 +31,8 @@
 
 | 改动 | 状态 | 计划 commit | 关联任务 |
 |------|:--:|------|------|
-| Harness 文件（AGENTS.md / PROGRESS.md / DECISIONS.md / .codebuddy/） | ✅ 已提交（3a545fa） | 已完成 | - |
-| 企业就绪度差距分析文档（含修复完成记录）+ PROGRESS 更新 | 🟡 已更新待提交 | 本轮收尾 commit | 1-4 |
+| 五层控制金字塔重构（src/agents/ 重构 + tests + replay 模块 + CI） | 🟡 已验证待提交 | 本轮收尾 commit | 1-2 |
+| refactor-report-20260817.md（重构方案报告） | 🟡 已验证待提交 | 本轮收尾 commit | - |
 
 ## 整体进度
 
