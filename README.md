@@ -331,11 +331,22 @@ Create a local `.env` file from `.env.example`:
 LLM_MODEL_ID=your-model-name
 LLM_API_KEY=your-api-key
 LLM_BASE_URL=https://your-openai-compatible-endpoint/v1
+
+# Optional alternate endpoint (OpenAI-compatible). To switch, copy the
+# LLM_ALT_* values into the three primary variables above; no code change.
+LLM_ALT_BASE_URL=https://your-alt-endpoint/v1
+LLM_ALT_API_KEY=your-alt-api-key
+LLM_ALT_MODEL_ID=your-alt-model-name
+LLM_ALT_MODEL_ID_PRO=your-alt-model-name-pro
 ```
 
 Notes:
 - `LLM_BASE_URL` can be empty if you use the default official-style endpoint.
 - the current runtime expects an OpenAI-compatible chat-completions interface
+- `LLM_ALT_*` is an optional alternate endpoint, read via
+  `get_alt_openai_settings()` / `get_alt_pro_model_id()` in `src/utils/config.py`;
+  if any piece is missing it is treated as unconfigured and the primary
+  endpoint is unaffected
 - if `LLM_API_KEY` is missing, the agent exits with a clear configuration error
 
 ### Step 2. Install dependencies

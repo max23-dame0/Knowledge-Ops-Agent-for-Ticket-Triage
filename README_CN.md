@@ -331,11 +331,18 @@ knowledge-ops-agent/
 LLM_MODEL_ID=your-model-name
 LLM_API_KEY=your-api-key
 LLM_BASE_URL=https://your-openai-compatible-endpoint/v1
+
+# 可选：备用端点（OpenAI 兼容）。主端点不可用时，把上方三个值改为对应的 LLM_ALT_* 值即可切换，代码无需改动。
+LLM_ALT_BASE_URL=https://your-alt-endpoint/v1
+LLM_ALT_API_KEY=your-alt-api-key
+LLM_ALT_MODEL_ID=your-alt-model-name
+LLM_ALT_MODEL_ID_PRO=your-alt-model-name-pro
 ```
 
 说明：
 - `LLM_BASE_URL` 可以为空
 - 当前运行时假设使用 OpenAI-compatible chat-completions 接口
+- `LLM_ALT_*` 为可选的备用端点配置，程序通过 `src/utils/config.py` 的 `get_alt_openai_settings()` / `get_alt_pro_model_id()` 读取；缺失任一项时按未配置处理，不影响主端点
 - 如果缺少 `LLM_API_KEY`，Agent 会给出明确配置错误
 
 ### 第 2 步：安装依赖
