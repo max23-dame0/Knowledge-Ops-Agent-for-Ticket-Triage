@@ -9,19 +9,21 @@
 
 | # | 任务 | 阶段 | 状态 | 下一步 | 阻塞 |
 |:--:|------|------|:--:|------|------|
-| 1 | 五层控制金字塔重构（guardrails/route_fn/contracts/trace + main_agent 管线） | 已完成 | ✅ 已提交 | 真实 LLM 5 路由冒烟全通过 | 无 |
-| 2 | 决策回放语料库（replay_store + replay_runner + golden promote） | 已完成 | ✅ 已提交 | golden 已含 5 条真实轨迹,CI 已加 replay 检查 | 无 |
-| 3 | 历史任务（本地评测/企业就绪度/harness 等,见下） | 已完成 | ✅ 已提交 | - | 无 |
+| 1 | 五层控制金字塔重构（guardrails/route_fn/contracts/trace + main_agent 管线） | 已完成 | ✅ 已提交（c4fda41） | 真实 LLM 5 路由冒烟全通过 | 无 |
+| 2 | 决策回放语料库（replay_store + replay_runner + golden promote） | 已完成 | ✅ 已提交（c4fda41） | golden 66 条真实轨迹,CI 已加 replay 检查 | 无 |
+| 3 | 澄清决策权移交 LLM（措辞启发式→advisory hints,零事实确定性澄清） | 已完成 | ✅ 已提交（2432a7e） | offline eval 66/66 全指标 100% | 无 |
+| 4 | 历史任务（本地评测/企业就绪度/harness 等,见下） | 已完成 | ✅ 已提交 | - | 无 |
 
 ## 当前验证状态
 
 | 检查项 | 状态 |
 |------|------|
-| `pytest tests/` | ✅ **195 passed / 0 skipped**（2026-08-17,新增 route_fn/replay 24 例） |
-| 真实 LLM 端到端冒烟（本地端点） | ✅ kb / ticket / escalation / clarify / refuse 五路由全通过（2026-08-17） |
-| `python -m src.evals.replay_runner replay` | ✅ 5/5 golden 回放一致（2026-08-17,无需 LLM） |
+| `pytest tests/` | ✅ **204 passed / 0 skipped**（2026-08-17） |
+| `python -m src.evals.run_evals --mode offline`（本地端点,66 条） | ✅ **route/tool/clarification/grounding/refusal 全指标 100%**（2026-08-17） |
+| 真实 LLM 端到端冒烟 | ✅ kb / ticket / escalation / clarify / refuse 五路由全通过（2026-08-17） |
+| `python -m src.evals.replay_runner replay` | ✅ 66/66 golden 回放一致（无需 LLM） |
 | `decide_route` vs 旧 `_resolve_route`（eval_set 66 条） | ✅ 0 差异（行为冻结验证） |
-| eval_set E009（升级政策→kb）路由修复 | ✅ 新增 escalation_policy_query 分支 |
+| eval_set 修复：E009 路由 + E049 unsafe 标签 | ✅ |
 | `data/replay/sessions/` 已加入 .gitignore | ✅ |
 | 当前 blocker | 无 |
 
@@ -31,8 +33,8 @@
 
 | 改动 | 状态 | 计划 commit | 关联任务 |
 |------|:--:|------|------|
-| 五层控制金字塔重构（src/agents/ 重构 + tests + replay 模块 + CI） | 🟡 已验证待提交 | 本轮收尾 commit | 1-2 |
-| refactor-report-20260817.md（重构方案报告） | 🟡 已验证待提交 | 本轮收尾 commit | - |
+| 阶段 1+2 重构（金字塔 + replay + clarify 移交） | ✅ 已提交（c4fda41 / 313e541 / 2432a7e） | 已完成 | 1-3 |
+| PROGRESS / DECISIONS 文档同步 | 🟡 已验证待提交 | 本轮收尾 commit | - |
 
 ## 整体进度
 
