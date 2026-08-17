@@ -1,4 +1,9 @@
-"""Lightweight retrieval wrapper for KB search and evidence normalization."""
+"""Retrieval grading layer for KB search and evidence normalization.
+
+Renamed from retrieval_agent: this module is NOT an agent - it owns no
+routing decisions. It wraps search_kb, grades evidence quality, and returns
+structured output for main-agent and UI consumption.
+"""
 
 from __future__ import annotations
 
@@ -28,7 +33,7 @@ class RetrievalOutput(BaseModel):
     source_titles: list[str] = Field(description="Unique KB source titles referenced by the hits.")
 
 
-class RetrievalAgent:
+class RetrievalGrader:
     """Thin retrieval helper that wraps search_kb without owning routing decisions."""
 
     def retrieve(self, query: str, top_k: int = 3) -> RetrievalOutput:
@@ -59,7 +64,10 @@ class RetrievalAgent:
         )
 
 
-
 def retrieve_evidence(query: str, top_k: int = 3) -> dict[str, object]:
     """Convenience function for callers that want normalized retrieval output."""
-    return RetrievalAgent().retrieve(query=query, top_k=top_k).model_dump()
+    return RetrievalGrader().retrieve(query=query, top_k=top_k).model_dump()
+
+
+# Compatibility aliases for callers that still import the old names.
+RetrievalAgent = RetrievalGrader

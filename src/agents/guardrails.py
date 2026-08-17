@@ -1,14 +1,22 @@
 """Guardrails and validation helpers for agents.
 
-Contains prompt-injection / exfiltration detection helpers used by the
-refusal precheck. The keyword list is a cheap first line of defense; the
-offline eval set keeps adversarial variants covered so regressions surface
-quickly.
+The guardrail layer is the only deterministic layer that may overrule the
+LLM. Rules are declared in one policy table instead of scattered if/elif
+branches:
+
+- hard=True  -> the rule decides (action applied, LLM is not consulted)
+- hard=False -> the rule only produces a hint; the LLM makes the final call
+
+Every rule carries an id so decisions are auditable and replayable. The
+keyword/pattern checks below are a cheap first line of defense; the golden
+eval set keeps adversarial variants covered so regressions surface quickly.
 """
 
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
+from typing import Any, Callable
 
 # Phrasing that tries to extract internal system context.
 SYSTEM_EXFILTRATION_PATTERNS = (
@@ -87,3 +95,120 @@ def looks_like_injection_attack(user_input: str) -> bool:
         or any(pattern.search(lowered) for pattern in MULTILINGUAL_BYPASS_PATTERNS)
         or any(pattern.search(lowered) for pattern in BULK_DATA_PATTERNS)
     )
+
+
+def _legacy_refusal_keywords_hit(user_input: str) -> bool:
+    """Keyword check equivalent to the legacy REFUSAL_KEYWORDS precheck."""
+    keywords = (
+        "泄露系统提示词",
+        "系统提示词",
+        "提示词",
+        "隐藏指令",
+        "系统配置",
+        "内部规则",
+        "内部升级规则",
+        "prompt",
+        "越狱",
+        "绕过限制",
+        "api key",
+        "密钥",
+        "内部配置",
+        "别人账号权限",
+        "所有用户",
+        "账单和邮箱",
+        "伪造工单状态",
+    )
+    return any(keyword in user_input or keyword in user_input.lower() for keyword in keywords)
+
+
+@dataclass(frozen=True)
+class GuardrailResult:
+    """Outcome of running one guardrail rule against an input."""
+
+    rule_id: str
+    action: str  # refuse | clarify | hint
+    hard: bool
+    matched: bool
+    detail: str = ""
+
+
+def run_guardrails(user_input: str) -> list[GuardrailResult]:
+    """Run the guardrail policy table and return one result per rule."""
+    lowered = user_input.lower()
+    checks: list[tuple[str, str, bool, Callable[[str], bool], str]] = [
+        (
+            "g_injection",
+            "refuse",
+            True,
+            lambda text: looks_like_injection_attack(text),
+            "prompt injection / exfiltration pattern matched",
+        ),
+        (
+            "g_legacy_refusal_keywords",
+            "refuse",
+            True,
+            _legacy_refusal_keywords_hit,
+            "legacy refusal keyword matched",
+        ),
+        (
+            "g_bulk_data_export",
+            "refuse",
+            True,
+            lambda text: any(pattern.search(text) for pattern in BULK_DATA_PATTERNS),
+            "bulk sensitive data request matched",
+        ),
+        (
+            "g_empty_input",
+            "clarify",
+            False,
+            lambda text: not text.strip(),
+            "empty input",
+        ),
+    ]
+    results: list[GuardrailResult] = []
+    for rule_id, action, hard, check, detail in checks:
+        matched = check(lowered)
+        results.append(
+            GuardrailResult(
+                rule_id=rule_id,
+                action=action,
+                hard=hard,
+                matched=matched,
+                detail=detail if matched else "",
+            )
+        )
+    return results
+
+
+def evaluate_guardrails(user_input: str) -> dict[str, Any]:
+    """Return the aggregate guardrail decision for a user input.
+
+    Hard rules fire first and always win. The decision is serializable so it
+    can be embedded in decision traces and replayed offline.
+    """
+    results = run_guardrails(user_input)
+    hard_hits = [r for r in results if r.hard and r.matched]
+    soft_hits = [r for r in results if not r.hard and r.matched]
+
+    decision: dict[str, Any] = {
+        "blocked": bool(hard_hits),
+        "action": None,
+        "rules_hit": [r.rule_id for r in hard_hits],
+        "hints": [
+            {"rule_id": r.rule_id, "action": r.action, "detail": r.detail}
+            for r in soft_hits
+        ],
+        "details": [
+            {
+                "rule_id": r.rule_id,
+                "action": r.action,
+                "hard": r.hard,
+                "matched": r.matched,
+                "detail": r.detail,
+            }
+            for r in results
+        ],
+    }
+    if hard_hits:
+        decision["action"] = hard_hits[0].action
+    return decision

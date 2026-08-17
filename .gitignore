@@ -45,3 +45,6 @@ data/eval_datasets/
 # OS-specific
 Thumbs.db
 Desktop.ini
+
+# Decision replay corpus: golden traces are curated locally; live sessions are ephemeral
+data/replay/sessions/
