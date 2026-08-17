@@ -223,7 +223,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Full-scale ticket benchmark (cloud).")
     parser.add_argument("--model", required=True,
                         choices=["glm-5.2", "hy3", "deepseek-v4-flash", "deepseek-v4-pro-202606",
-                                 "deepseek-v4-flash-202605"])
+                                 "deepseek-v4-flash-202605", "gemini-3.7-flash-high"])
     parser.add_argument("--workers", type=int, default=18, help="concurrent requests (each spawns one knot-cli)")
     parser.add_argument("--timeout", type=float, default=30.0, help="per-request timeout seconds")
     parser.add_argument("--max-retries", type=int, default=3)
