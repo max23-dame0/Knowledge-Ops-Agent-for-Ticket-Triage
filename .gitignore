@@ -29,7 +29,9 @@ MANIFEST
 .env
 
 # Local data (if intended to be local)
-data/eval_results/
+# Benchmark results & raw per-sample checkpoints are versioned (credible source data);
+# only obsolete backup dumps (old metric definitions / failed-run salvage) stay ignored
+data/eval_results/backup_*/
 data/raw/
 data/processed/
 data/audit/

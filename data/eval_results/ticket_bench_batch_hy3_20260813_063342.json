@@ -1,0 +1,35 @@
+{
+  "model": "hy3",
+  "concurrency": 4,
+  "tobi": {
+    "chunks": 1,
+    "total": 15,
+    "success_rate": 1.0,
+    "kb_grounding_rate": 1.0,
+    "escalation_signal_rate": 0.7333,
+    "answerable_rate": 1.0,
+    "incident_escalation_rate": 1.0,
+    "baseline_prompt_tokens": 17015.0,
+    "total_tokens": 613274,
+    "delta_total_tokens": 358049,
+    "avg_tokens_per_req": 40884.9,
+    "avg_delta_tokens_per_req": 23869.9,
+    "avg_latency_seconds": 24.26,
+    "latency_p95": 31.26,
+    "wall_seconds": 105.3
+  },
+  "itsm": {
+    "chunks": 1,
+    "total": 15,
+    "success_rate": 1.0,
+    "route_accuracy": 0.9333,
+    "baseline_prompt_tokens": 17034.0,
+    "total_tokens": 509918,
+    "delta_total_tokens": 254408,
+    "avg_tokens_per_req": 33994.5,
+    "avg_delta_tokens_per_req": 16960.5,
+    "avg_latency_seconds": 15.39,
+    "latency_p95": 20.74,
+    "wall_seconds": 61.9
+  }
+}

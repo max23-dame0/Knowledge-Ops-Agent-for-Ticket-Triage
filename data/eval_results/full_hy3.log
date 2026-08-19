@@ -1,0 +1,4 @@
+=== tobi (hy3, workers=10, timeout=30.0) ===
+[tobi] loaded 18537 samples
+[tobi] baseline_prompt_tokens=17149
+[tobi] resumed with 106 completed

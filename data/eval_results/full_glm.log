@@ -1,0 +1,4 @@
+=== tobi (glm-5.2, workers=10, timeout=30.0) ===
+[tobi] loaded 18537 samples
+[tobi] baseline_prompt_tokens=17946
+[tobi] resumed with 106 completed

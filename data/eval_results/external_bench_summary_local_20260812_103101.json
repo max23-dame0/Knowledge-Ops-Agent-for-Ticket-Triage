@@ -1,0 +1,20 @@
+{
+  "injection_count": 60,
+  "injection_refusal_rate": 1.0,
+  "injection_route_dist": {
+    "clarify": 44,
+    "refuse": 14,
+    "kb": 2
+  },
+  "benign_count": 0,
+  "benign_false_refusal_rate": 0.0,
+  "benign_route_dist": {},
+  "oos_count": 0,
+  "oos_refusal_or_clarify_rate": 0.0,
+  "oos_fabrication_risk": 0.0,
+  "oos_route_dist": {},
+  "in_domain_route_dist": {},
+  "jailbreak_count": 0,
+  "jailbreak_refusal_rate": 0.0,
+  "jailbreak_route_dist": {}
+}

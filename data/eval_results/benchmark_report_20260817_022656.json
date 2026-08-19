@@ -1,0 +1,207 @@
+{
+  "generated_at": "2026-08-17T02:26:56.599577+00:00",
+  "models": [
+    "hy3"
+  ],
+  "classification": [
+    {
+      "source": "ticket_classify_deepseek-v4-flash-202605_20260814_085705",
+      "model": "deepseek-v4-flash-202605",
+      "task": "type",
+      "dataset": "tobi",
+      "accuracy": 0.8,
+      "success_rate": 0.5,
+      "ok_count": 5,
+      "confusion": {
+        "Incident->Incident": 2,
+        "Problem->Incident": 1,
+        "Request->Request": 2
+      }
+    },
+    {
+      "source": "ticket_classify_deepseek-v4-flash-202605_20260814_085705",
+      "model": "deepseek-v4-flash-202605",
+      "task": "priority",
+      "dataset": "tobi",
+      "accuracy": 0.0,
+      "success_rate": 0.6,
+      "ok_count": 6,
+      "confusion": {
+        "high->medium": 2,
+        "medium->low": 4
+      }
+    },
+    {
+      "source": "ticket_classify_deepseek-v4-flash-202605_20260814_085705",
+      "model": "deepseek-v4-flash-202605",
+      "task": "queue",
+      "dataset": "tobi",
+      "accuracy": 0.5,
+      "success_rate": 0.4,
+      "ok_count": 4,
+      "confusion": {
+        "Customer Service->Product Support": 1,
+        "General Inquiry->Technical Support": 1,
+        "Technical Support->Technical Support": 2
+      }
+    },
+    {
+      "source": "ticket_classify_deepseek-v4-flash-202605_20260814_090720",
+      "model": "deepseek-v4-flash-202605",
+      "task": "type",
+      "dataset": "tobi",
+      "accuracy": 0.7143,
+      "success_rate": 0.875,
+      "ok_count": 7,
+      "confusion": {
+        "Incident->Incident": 1,
+        "Incident->Problem": 1,
+        "Problem->Incident": 1,
+        "Request->Request": 4
+      }
+    },
+    {
+      "source": "ticket_classify_deepseek-v4-flash-202605_20260814_090720",
+      "model": "deepseek-v4-flash-202605",
+      "task": "priority",
+      "dataset": "tobi",
+      "accuracy": 0.375,
+      "success_rate": 1.0,
+      "ok_count": 8,
+      "confusion": {
+        "high->high": 2,
+        "low->high": 1,
+        "medium->low": 4,
+        "medium->medium": 1
+      }
+    },
+    {
+      "source": "ticket_classify_deepseek-v4-flash-202605_20260814_090720",
+      "model": "deepseek-v4-flash-202605",
+      "task": "queue",
+      "dataset": "tobi",
+      "accuracy": 0.0,
+      "success_rate": 0.875,
+      "ok_count": 7,
+      "confusion": {
+        "Customer Service->": 1,
+        "Customer Service->IT Support": 1,
+        "Customer Service->Product Support": 1,
+        "Customer Service->Sales and Pre-Sales": 1,
+        "IT Support->Technical Support": 1,
+        "Technical Support->": 1,
+        "Technical Support->Product Support": 1
+      }
+    }
+  ],
+  "full_behavior": [
+    {
+      "source": "ticket_full_deepseek-v4-flash-202605_20260814_065848",
+      "model": "deepseek-v4-flash-202605",
+      "dataset": "tobi",
+      "workers": 8,
+      "timeout": 60.0,
+      "total": 18537,
+      "ok_count": 18411,
+      "success_rate": 0.9932,
+      "timeout_count": 7,
+      "failed_count": 7347,
+      "retries_used": 7228,
+      "kb_grounding_rate": 0.9954,
+      "escalation_signal_rate": 0.0005,
+      "answerable_rate": 1.0,
+      "wall_seconds": 37388.97,
+      "throughput_rps": 0.492,
+      "latency_p50": 2.05,
+      "latency_p95": 20.86,
+      "latency_p99": 29.79,
+      "latency_max": 33.87,
+      "baseline_prompt_tokens": 5,
+      "total_prompt_tokens": 9384343,
+      "total_completion_tokens": 3335726,
+      "delta_prompt_tokens": 9292288,
+      "delta_total_tokens": 12628014,
+      "avg_delta_tokens_per_req": 685.9
+    },
+    {
+      "source": "ticket_full_deepseek-v4-flash-202605_20260814_065848",
+      "model": "deepseek-v4-flash-202605",
+      "dataset": "itsm",
+      "workers": 8,
+      "timeout": 60.0,
+      "total": 900,
+      "ok_count": 900,
+      "success_rate": 1.0,
+      "timeout_count": 0,
+      "failed_count": 333,
+      "retries_used": 333,
+      "route_accuracy": 0.9978,
+      "wall_seconds": 1730.83,
+      "throughput_rps": 0.52,
+      "latency_p50": 1.94,
+      "latency_p95": 20.84,
+      "latency_p99": 29.58,
+      "latency_max": 31.99,
+      "baseline_prompt_tokens": 5,
+      "total_prompt_tokens": 417351,
+      "total_completion_tokens": 152317,
+      "delta_prompt_tokens": 412851,
+      "delta_total_tokens": 565168,
+      "avg_delta_tokens_per_req": 628.0
+    },
+    {
+      "source": "ticket_full_hy3_20260814_070657",
+      "model": "hy3",
+      "dataset": "tobi",
+      "workers": 18,
+      "timeout": 90.0,
+      "total": 18537,
+      "ok_count": 11240,
+      "success_rate": 0.6064,
+      "timeout_count": 392,
+      "failed_count": 30490,
+      "retries_used": 23585,
+      "kb_grounding_rate": 0.9532,
+      "escalation_signal_rate": 0.2739,
+      "answerable_rate": 1.0,
+      "wall_seconds": 17802.25,
+      "throughput_rps": 0.631,
+      "latency_p50": 8.13,
+      "latency_p95": 61.63,
+      "latency_p99": 81.57,
+      "latency_max": 90.06,
+      "baseline_prompt_tokens": 17209,
+      "total_prompt_tokens": 295860787,
+      "total_completion_tokens": 1106152,
+      "delta_prompt_tokens": 102433777,
+      "delta_total_tokens": 103539929,
+      "avg_delta_tokens_per_req": 9211.7
+    },
+    {
+      "source": "ticket_full_hy3_20260814_070657",
+      "model": "hy3",
+      "dataset": "itsm",
+      "workers": 18,
+      "timeout": 90.0,
+      "total": 900,
+      "ok_count": 0,
+      "success_rate": 0.0,
+      "timeout_count": 0,
+      "failed_count": 3600,
+      "retries_used": 2700,
+      "route_accuracy": 0.0,
+      "wall_seconds": 482.99,
+      "throughput_rps": 0.0,
+      "latency_p50": 0.0,
+      "latency_p95": 0.0,
+      "latency_p99": 0.0,
+      "latency_max": 0,
+      "baseline_prompt_tokens": 17209,
+      "total_prompt_tokens": 0,
+      "total_completion_tokens": 0,
+      "delta_prompt_tokens": 0,
+      "delta_total_tokens": 0,
+      "avg_delta_tokens_per_req": 0.0
+    }
+  ]
+}

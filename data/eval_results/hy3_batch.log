@@ -1,0 +1,8 @@
+model=hy3 conc=16 tobi=1000 itsm=900 chunk=100
+  [tobi] chunk 0..100 (seed=1000) ...
+[chunk tobi:0] bad json
+ 0.69, "answerable_rate": 1.0, "incident_escalation_rate": 1.0, "incident_count": 35, "wall_seconds": 399.53, "throughput_rps": 0.25, "latency_p50": 55.66, "latency_p95": 105.94, "latency_p99": 137.48, "latency_max": 137.48, "total_prompt_tokens": 3973598, "total_completion_tokens": 35406, "total_tokens": 4009004, "avg_tokens_per_req": 40090.0, "avg_latency_seconds": 57.91, "errors": {"ok": 100}}
+
+  [tobi] chunk 100..200 (seed=1100) ...
+[chunk tobi:100] FAILED rc=4294967295
+

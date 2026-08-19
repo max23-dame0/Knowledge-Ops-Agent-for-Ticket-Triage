@@ -1,0 +1,58 @@
+{
+  "summary": {
+    "tobi": {
+      "dataset": "tobi",
+      "model": "hy3",
+      "concurrency": 8,
+      "total": 20,
+      "ok_count": 20,
+      "success_rate": 1.0,
+      "route_accuracy": 0.55,
+      "conservative_rate": 0.0,
+      "wall_seconds": 44.06,
+      "throughput_rps": 0.454,
+      "latency_p50": 10.8,
+      "latency_p95": 44.01,
+      "latency_p99": 44.01,
+      "latency_max": 44.01,
+      "total_prompt_tokens": 359094,
+      "total_completion_tokens": 5725,
+      "total_tokens": 364819,
+      "avg_tokens_per_req": 18241.0,
+      "errors": {
+        "ok": 20
+      }
+    },
+    "itsm": {
+      "dataset": "itsm",
+      "model": "hy3",
+      "concurrency": 8,
+      "total": 20,
+      "ok_count": 17,
+      "success_rate": 0.85,
+      "route_accuracy": 0.7647,
+      "conservative_rate": 0.0,
+      "wall_seconds": 66.58,
+      "throughput_rps": 0.3,
+      "latency_p50": 9.54,
+      "latency_p95": 54.94,
+      "latency_p99": 54.94,
+      "latency_max": 54.94,
+      "total_prompt_tokens": 304632,
+      "total_completion_tokens": 4831,
+      "total_tokens": 309463,
+      "avg_tokens_per_req": 18203.7,
+      "errors": {
+        "HTTP 502": 3,
+        "ok": 17
+      }
+    }
+  },
+  "args": {
+    "model": "hy3",
+    "concurrency": 8,
+    "tobi_sample": 20,
+    "itsm_sample": 20,
+    "seed": 42
+  }
+}

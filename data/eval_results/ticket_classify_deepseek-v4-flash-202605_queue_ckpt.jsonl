@@ -1,0 +1,8 @@
+{"idx": 2, "ok": true, "pred": "", "gt": "Customer Service", "latency": 2.525529384613037, "error": null}
+{"idx": 3, "ok": true, "pred": "IT Support", "gt": "Customer Service", "latency": 3.7423272132873535, "error": null}
+{"idx": 5, "ok": true, "pred": "Product Support", "gt": "Technical Support", "latency": 1.451707124710083, "error": null}
+{"idx": 1, "ok": true, "pred": "Sales and Pre-Sales", "gt": "Customer Service", "latency": 6.5694780349731445, "error": null}
+{"idx": 7, "ok": true, "pred": "Technical Support", "gt": "IT Support", "latency": 1.3964707851409912, "error": null}
+{"idx": 6, "ok": true, "pred": "", "gt": "Technical Support", "latency": 5.263000726699829, "error": null}
+{"idx": 4, "ok": true, "pred": "Product Support", "gt": "Customer Service", "latency": 15.174298286437988, "error": null}
+{"idx": 0, "ok": false, "pred": "", "gt": "General Inquiry", "latency": 30.052470922470093, "error": "HTTP 429"}

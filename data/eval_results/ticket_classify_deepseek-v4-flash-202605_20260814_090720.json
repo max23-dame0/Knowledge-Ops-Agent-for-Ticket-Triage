@@ -1,0 +1,56 @@
+{
+  "type": {
+    "task": "type",
+    "model": "deepseek-v4-flash-202605",
+    "total": 8,
+    "ok_count": 7,
+    "success_rate": 0.875,
+    "accuracy": 0.7143,
+    "correct": 5,
+    "failed_count": 1,
+    "wall_seconds": 0.0,
+    "confusion": {
+      "Incident->Incident": 1,
+      "Incident->Problem": 1,
+      "Problem->Incident": 1,
+      "Request->Request": 4
+    }
+  },
+  "priority": {
+    "task": "priority",
+    "model": "deepseek-v4-flash-202605",
+    "total": 8,
+    "ok_count": 8,
+    "success_rate": 1.0,
+    "accuracy": 0.375,
+    "correct": 3,
+    "failed_count": 0,
+    "wall_seconds": 23.72,
+    "confusion": {
+      "high->high": 2,
+      "low->high": 1,
+      "medium->low": 4,
+      "medium->medium": 1
+    }
+  },
+  "queue": {
+    "task": "queue",
+    "model": "deepseek-v4-flash-202605",
+    "total": 8,
+    "ok_count": 7,
+    "success_rate": 0.875,
+    "accuracy": 0.0,
+    "correct": 0,
+    "failed_count": 1,
+    "wall_seconds": 136.7,
+    "confusion": {
+      "Customer Service->": 1,
+      "Customer Service->IT Support": 1,
+      "Customer Service->Product Support": 1,
+      "Customer Service->Sales and Pre-Sales": 1,
+      "IT Support->Technical Support": 1,
+      "Technical Support->": 1,
+      "Technical Support->Product Support": 1
+    }
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "summary": {
+    "tobi": {
+      "dataset": "tobi",
+      "model": "glm-5.2",
+      "mode": "tobi",
+      "concurrency": 4,
+      "total": 20,
+      "ok_count": 20,
+      "success_rate": 1.0,
+      "conservative_rate": 0.0,
+      "kb_grounding_rate": 1.0,
+      "escalation_signal_rate": 0.15,
+      "answerable_rate": 1.0,
+      "incident_escalation_rate": 0.375,
+      "incident_count": 8,
+      "wall_seconds": 81.2,
+      "throughput_rps": 0.246,
+      "latency_p50": 13.24,
+      "latency_p95": 29.76,
+      "latency_p99": 29.76,
+      "latency_max": 29.76,
+      "total_prompt_tokens": 379746,
+      "total_completion_tokens": 3502,
+      "total_tokens": 383248,
+      "avg_tokens_per_req": 19162.4,
+      "avg_latency_seconds": 15.09,
+      "errors": {
+        "ok": 20
+      }
+    },
+    "itsm": {
+      "dataset": "itsm",
+      "model": "glm-5.2",
+      "mode": "itsm",
+      "concurrency": 4,
+      "total": 30,
+      "ok_count": 30,
+      "success_rate": 1.0,
+      "conservative_rate": 0.0,
+      "route_accuracy": 0.8333,
+      "wall_seconds": 129.88,
+      "throughput_rps": 0.231,
+      "latency_p50": 12.68,
+      "latency_p95": 24.03,
+      "latency_p99": 25.07,
+      "latency_max": 25.07,
+      "total_prompt_tokens": 596730,
+      "total_completion_tokens": 5589,
+      "total_tokens": 602319,
+      "avg_tokens_per_req": 20077.3,
+      "avg_latency_seconds": 13.65,
+      "errors": {
+        "ok": 30
+      }
+    }
+  },
+  "args": {
+    "model": "glm-5.2",
+    "concurrency": 4,
+    "tobi_sample": 20,
+    "itsm_sample": 30,
+    "seed": 42
+  }
+}

@@ -1,0 +1,98 @@
+{
+  "generated_at": "2026-08-14T09:13:17.710784+00:00",
+  "models": [
+    "deepseek-v4-flash-202605"
+  ],
+  "classification": [
+    {
+      "source": "ticket_classify_deepseek-v4-flash-202605_20260814_085705",
+      "model": "deepseek-v4-flash-202605",
+      "task": "type",
+      "dataset": "tobi",
+      "accuracy": 0.8,
+      "success_rate": 0.5,
+      "ok_count": 5,
+      "confusion": {
+        "Incident->Incident": 2,
+        "Problem->Incident": 1,
+        "Request->Request": 2
+      }
+    },
+    {
+      "source": "ticket_classify_deepseek-v4-flash-202605_20260814_085705",
+      "model": "deepseek-v4-flash-202605",
+      "task": "priority",
+      "dataset": "tobi",
+      "accuracy": 0.0,
+      "success_rate": 0.6,
+      "ok_count": 6,
+      "confusion": {
+        "high->medium": 2,
+        "medium->low": 4
+      }
+    },
+    {
+      "source": "ticket_classify_deepseek-v4-flash-202605_20260814_085705",
+      "model": "deepseek-v4-flash-202605",
+      "task": "queue",
+      "dataset": "tobi",
+      "accuracy": 0.5,
+      "success_rate": 0.4,
+      "ok_count": 4,
+      "confusion": {
+        "Customer Service->Product Support": 1,
+        "General Inquiry->Technical Support": 1,
+        "Technical Support->Technical Support": 2
+      }
+    },
+    {
+      "source": "ticket_classify_deepseek-v4-flash-202605_20260814_090720",
+      "model": "deepseek-v4-flash-202605",
+      "task": "type",
+      "dataset": "tobi",
+      "accuracy": 0.7143,
+      "success_rate": 0.875,
+      "ok_count": 7,
+      "confusion": {
+        "Incident->Incident": 1,
+        "Incident->Problem": 1,
+        "Problem->Incident": 1,
+        "Request->Request": 4
+      }
+    },
+    {
+      "source": "ticket_classify_deepseek-v4-flash-202605_20260814_090720",
+      "model": "deepseek-v4-flash-202605",
+      "task": "priority",
+      "dataset": "tobi",
+      "accuracy": 0.375,
+      "success_rate": 1.0,
+      "ok_count": 8,
+      "confusion": {
+        "high->high": 2,
+        "low->high": 1,
+        "medium->low": 4,
+        "medium->medium": 1
+      }
+    },
+    {
+      "source": "ticket_classify_deepseek-v4-flash-202605_20260814_090720",
+      "model": "deepseek-v4-flash-202605",
+      "task": "queue",
+      "dataset": "tobi",
+      "accuracy": 0.0,
+      "success_rate": 0.875,
+      "ok_count": 7,
+      "confusion": {
+        "Customer Service->": 1,
+        "Customer Service->IT Support": 1,
+        "Customer Service->Product Support": 1,
+        "Customer Service->Sales and Pre-Sales": 1,
+        "IT Support->Technical Support": 1,
+        "Technical Support->": 1,
+        "Technical Support->Product Support": 1
+      }
+    }
+  ],
+  "full_behavior": []
+}

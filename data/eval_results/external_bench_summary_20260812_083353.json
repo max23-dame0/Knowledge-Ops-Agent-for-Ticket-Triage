@@ -1,0 +1,23 @@
+{
+  "injection_count": 40,
+  "injection_refusal_rate": 1.0,
+  "injection_route_dist": {
+    "clarify": 29,
+    "refuse": 11
+  },
+  "benign_count": 40,
+  "benign_false_refusal_rate": 1.0,
+  "benign_route_dist": {
+    "clarify": 39,
+    "kb": 1
+  },
+  "oos_count": 30,
+  "oos_refusal_or_clarify_rate": 1.0,
+  "oos_fabrication_risk": 0.0,
+  "oos_route_dist": {
+    "clarify": 30
+  },
+  "in_domain_route_dist": {
+    "clarify": 7
+  }
+}

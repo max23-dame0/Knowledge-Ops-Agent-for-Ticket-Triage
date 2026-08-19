@@ -1,0 +1,8 @@
+{"idx": 2, "ok": true, "pred": "low", "gt": "medium", "latency": 1.6892907619476318, "error": null}
+{"idx": 4, "ok": true, "pred": "low", "gt": "medium", "latency": 2.139690637588501, "error": null}
+{"idx": 1, "ok": true, "pred": "low", "gt": "medium", "latency": 13.338621854782104, "error": null}
+{"idx": 6, "ok": true, "pred": "medium", "gt": "medium", "latency": 1.4302895069122314, "error": null}
+{"idx": 7, "ok": true, "pred": "high", "gt": "high", "latency": 1.8110253810882568, "error": null}
+{"idx": 0, "ok": true, "pred": "high", "gt": "low", "latency": 18.066420793533325, "error": null}
+{"idx": 3, "ok": true, "pred": "high", "gt": "high", "latency": 19.736809253692627, "error": null}
+{"idx": 5, "ok": true, "pred": "low", "gt": "medium", "latency": 23.716854572296143, "error": null}

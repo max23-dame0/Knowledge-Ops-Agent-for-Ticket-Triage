@@ -1,0 +1,29 @@
+{
+  "model": "hy3",
+  "concurrency": 4,
+  "tobi": {
+    "chunks": 2,
+    "total": 30,
+    "success_rate": 1.0,
+    "kb_grounding_rate": 1.0,
+    "escalation_signal_rate": 0.7667,
+    "answerable_rate": 1.0,
+    "incident_escalation_rate": 1.0,
+    "total_tokens": 1230314,
+    "avg_tokens_per_req": 41010.45,
+    "avg_latency_seconds": 23.65,
+    "latency_p95": 48.705,
+    "wall_seconds": 190.6
+  },
+  "itsm": {
+    "chunks": 2,
+    "total": 30,
+    "success_rate": 1.0,
+    "route_accuracy": 0.8667,
+    "total_tokens": 997845,
+    "avg_tokens_per_req": 33261.5,
+    "avg_latency_seconds": 13.33,
+    "latency_p95": 19.935,
+    "wall_seconds": 110.3
+  }
+}
